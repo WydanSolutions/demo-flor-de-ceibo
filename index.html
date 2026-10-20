@@ -300,6 +300,23 @@ table.t th.cen,table.t td.cen{text-align:center}
 .aviso-fila.nuevo b::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
   background:var(--ceibo);margin-left:7px;vertical-align:1px}
 
+/* planilla anual de gastos: la primera columna queda fija al deslizar */
+.t-cruz{font-size:12.5px;min-width:900px}
+.t-cruz th:first-child, .t-cruz td:first-child{position:sticky;left:0;background:#fff;z-index:2;
+  box-shadow:1px 0 0 var(--linea-2);min-width:170px}
+.t-cruz th{background:#fff}
+.t-cruz tr.g-sep td{background:var(--arena);font-size:10px;letter-spacing:.12em;font-weight:700;
+  color:var(--tinta-2);padding:6px 10px}
+.t-cruz tr.g-sep td:first-child{background:var(--arena)}
+.t-cruz tr.g-sub td{background:#FCFAF7;font-weight:600}
+.t-cruz tr.g-sub td:first-child{background:#FCFAF7}
+.t-cruz tr.g-tot td{background:var(--arena);font-weight:700;border-top:2px solid var(--linea)}
+.t-cruz tr.g-tot td:first-child{background:var(--arena)}
+.t-cruz tr.g-vta td{color:var(--ok)}
+.t-cruz tr.g-res td{font-weight:700;border-top:1px solid var(--linea)}
+.t-cruz tbody tr:hover td:first-child{background:#FDFAF6}
+@media (max-width:680px){ .t-cruz th:first-child, .t-cruz td:first-child{min-width:130px} }
+
 /* ==================== VENTANAS (modal) ==================== */
 .fondo-modal{position:fixed;inset:0;background:rgba(43,33,25,.44);backdrop-filter:blur(3px);z-index:80;
   display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;overflow-y:auto}
@@ -549,7 +566,7 @@ const CFG = {
   duena:'Vale Campos',
   lema:'Raíces uruguayas · Elegancia sin fronteras',
   instagram:'flordeceibobyvalecampos',
-  version:'demo-2026-09-24',
+  version:'demo-2026-10-20',
   moneda:'$',                 // pesos uruguayos
   dolar:41.20,                // cotización de referencia (se edita en Configuración)
   real:7.55,
@@ -623,6 +640,14 @@ const PAISES = ['Uruguay','Brasil'];
 const GENEROS = ['Mujer','Hombre'];
 const TALLES_NUM = ['34','36','38','40','42','44','46','48'];
 const TALLES_LET = ['PP','P','S','M','L','XL','XXL','Único'];
+/* Gastos del negocio: los FIJOS se repiten todos los meses (alquiler, sueldos…),
+   los VARIABLES cambian según el mes (publicidad, fletes, arreglos…). */
+const CAT_GASTO = {
+  Fijo:     ['Alquiler','Sueldos y aportes','Servicios','Contador','Seguros y alarma','Tienda online'],
+  Variable: ['Publicidad','Comisiones de tarjeta','Envíos y fletes','Packaging','Mantenimiento','Limpieza','Papelería','Impuestos y tasas','Eventos','Otros']
+};
+const CATS_GASTO = CAT_GASTO.Fijo.concat(CAT_GASTO.Variable);
+const tipoDeCat = c => CAT_GASTO.Fijo.includes(c) ? 'Fijo' : 'Variable';
 const ETIQUETAS = ['VIP','Mayorista','Brasil','Novia / evento','Sastrería','Tejidos','Compra online','Prensa'];
 const REDES = [
   {id:'ig', nombre:'Instagram', color:'#D9536E', em:'IG'},
@@ -631,8 +656,8 @@ const REDES = [
 ];
 /* Permisos: qué ve cada rol. La dueña ve todo. */
 const PERMISOS = {
-  'Dueña':      ['panel','clientas','stock','ventas','proveedores','marketing','config','$$'],
-  'Encargada':  ['panel','clientas','stock','ventas','proveedores','marketing'],
+  'Dueña':      ['panel','clientas','stock','ventas','gastos','proveedores','marketing','config','$$'],
+  'Encargada':  ['panel','clientas','stock','ventas','gastos','proveedores','marketing'],
   'Vendedora':  ['panel','clientas','stock','ventas']
 };
 /* '$$' = puede ver costos, márgenes y ganancias */
@@ -743,7 +768,7 @@ function semilla(){
   _semilla = 20260923;
   const db = { cfg:{}, usuarios:[], clientas:[], productos:[], ventas:[], devoluciones:[],
                proveedores:[], ingresos:[], pagosProv:[], campanas:[], plantillas:[], posts:[],
-               eventos:[], redes:[], ads:[], esperas:[], movStock:[], cobros:[], avisos:[] };
+               eventos:[], redes:[], ads:[], esperas:[], movStock:[], cobros:[], avisos:[], gastos:[] };
 
   db.cfg = { dolar:CFG.dolar, real:CFG.real, comision:CFG.comisionDefecto, diasSinComprar:60,
              stockMinimo:2, ivaTasa:CFG.ivaTasa, metaFDC:950000, metaTEV:420000 };
@@ -1247,6 +1272,68 @@ function generarHistorial(db){
       user:'u1', tiendaDestino:'TEV'});
   }
 
+  /* ───── GASTOS del negocio: los fijos de todos los meses y los variables ───── */
+  const FIJOS = {
+    FDC:[['Alquiler del local','Alquiler',38000],['Sueldos del personal','Sueldos y aportes',96000],
+         ['Aportes BPS','Sueldos y aportes',28000],['Luz (UTE)','Servicios',6500],
+         ['Agua (OSE)','Servicios',1900],['Internet y teléfono','Servicios',2400],
+         ['Honorarios del contador','Contador',7500],['Seguro del local','Seguros y alarma',3200],
+         ['Alarma y monitoreo','Seguros y alarma',2100],['Plataforma de la tienda online','Tienda online',1800]],
+    TEV:[['Alquiler del local','Alquiler',26000],['Sueldos del personal','Sueldos y aportes',62000],
+         ['Aportes BPS','Sueldos y aportes',18000],['Luz (UTE)','Servicios',4800],
+         ['Agua (OSE)','Servicios',1500],['Internet y teléfono','Servicios',2400],
+         ['Honorarios del contador','Contador',5500],['Seguro del local','Seguros y alarma',2200],
+         ['Alarma y monitoreo','Seguros y alarma',1800],['Plataforma de la tienda online','Tienda online',1800]]
+  };
+  let ng=0;
+  const mesesAtras = 6;
+  TIENDAS.forEach(t=>{
+    for(let k=mesesAtras; k>=0; k--){
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-k);
+      const mes = iso(d).slice(0,7), esteMes = k===0;
+      const ventasMes = db.ventas.filter(v=>v.tienda===t.id && mesDe(v.fecha)===mes);
+      const totalMes = ventasMes.reduce((s,v)=>s+v.total,0);
+      const conTarjeta = ventasMes.filter(v=>v.medio==='Crédito'||v.medio==='Débito').reduce((s,v)=>s+v.total,0);
+
+      /* los fijos: todos los meses, el día 5 */
+      FIJOS[t.id].forEach(f=>{
+        ng++;
+        const variacion = f[1]==='Servicios' ? (0.82+rnd()*0.42) : 1;
+        const fecha = mes+'-05';
+        const pend = esteMes && rnd()<0.3;
+        db.gastos.push({id:'g'+ng, tienda:t.id, fecha, concepto:f[0], categoria:f[1], tipo:'Fijo',
+          monto: Math.round(f[2]*variacion/10)*10, medio: pesado([['Transferencia',60],['Débito',25],['Efectivo',15]]),
+          estado: pend?'Pendiente':'Pagado', vence: mes+'-28', recurrente:true, notas:''});
+      });
+
+      /* los variables: cambian mes a mes */
+      const vars = [];
+      if(conTarjeta) vars.push(['Comisiones de tarjeta','Comisiones de tarjeta', Math.round(conTarjeta*0.032/10)*10]);
+      vars.push(['Envíos y fletes','Envíos y fletes', rint(1800,6200)]);
+      vars.push(['Bolsas, cajas y etiquetas','Packaging', rint(1400,4200)]);
+      vars.push(['Limpieza del local','Limpieza', rint(2800,4200)]);
+      vars.push(['Anticipos DGI','Impuestos y tasas', rint(7000,16000)]);
+      const ads = db.ads.filter(a=>a.tienda===t.id && mesDe(a.desde)===mes);
+      if(ads.length) vars.push(['Pauta en redes','Publicidad', ads.reduce((s,a)=>s+a.invertido,0)]);
+      else if(rnd()<0.5) vars.push(['Pauta en redes','Publicidad', rint(1200,4500)]);
+      if(rnd()<0.35) vars.push([elegir(['Arreglo de la vidriera','Pintura del local','Arreglo del aire','Cambio de luces']),'Mantenimiento', rint(2500,14000)]);
+      if(rnd()<0.4) vars.push(['Papelería e impresiones','Papelería', rint(700,2100)]);
+      const evs = db.eventos.filter(e=>e.tienda===t.id && mesDe(e.fecha)===mes);
+      if(evs.length) vars.push([evs[0].nombre,'Eventos', rint(8000,26000)]);
+      if(rnd()<0.25) vars.push(['Varios del mes','Otros', rint(900,5000)]);
+
+      vars.forEach(v=>{
+        ng++;
+        const dia = String(rint(2,esteMes? Math.max(2,hoy().getDate()) : 28)).padStart(2,'0');
+        const pend = esteMes && rnd()<0.5;
+        db.gastos.push({id:'g'+ng, tienda:t.id, fecha: mes+'-'+dia, concepto:v[0], categoria:v[1], tipo:'Variable',
+          monto:v[2], medio: pesado([['Transferencia',45],['Efectivo',30],['Débito',15],['Crédito',10]]),
+          estado: pend?'Pendiente':'Pagado', vence: mes+'-'+String(Math.min(28,+dia+10)).padStart(2,'0'),
+          recurrente:false, notas:''});
+      });
+    }
+  });
+
   /* ventas atribuidas a cada publicación y campaña */
   db.posts.forEach(p=>{
     const vs = db.ventas.filter(v=>v.origen===p.id);
@@ -1409,6 +1496,7 @@ const ICO = {
   ventas:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg>',
   prov:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/></svg>',
   mkt:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 10v4a1 1 0 0 0 1 1h3l6 4V5L8 9H5a1 1 0 0 0-1 1Z"/><path d="M18 8.5a5 5 0 0 1 0 7"/></svg>',
+  gastos:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h12A1.5 1.5 0 0 1 18 7.5V9"/><rect x="3" y="9" width="18" height="10" rx="2"/><circle cx="16.5" cy="14" r="1.3" fill="currentColor" stroke="none"/></svg>',
   config:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/></svg>'
 };
 const TABS = [
@@ -1416,6 +1504,7 @@ const TABS = [
   {id:'clientas',    nom:'Clientes',      ico:ICO.clientas},
   {id:'stock',       nom:'Stock',         ico:ICO.stock},
   {id:'ventas',      nom:'Ventas',        ico:ICO.ventas},
+  {id:'gastos',      nom:'Gastos',        ico:ICO.gastos},
   {id:'proveedores', nom:'Proveedores',   ico:ICO.prov},
   {id:'marketing',   nom:'Marketing y redes', ico:ICO.mkt},
   {id:'config',      nom:'Configuración', ico:ICO.config}
@@ -2858,7 +2947,7 @@ function mktCalendario(){
           <button class="btn chico" onclick="formPost()">＋ Publicación</button>`})}
 
   <div class="grid g2 mt">
-    ${card('Eventos y desfiles', `<div class="lista">
+    ${card('Eventos', `<div class="lista">
       ${T('eventos').sort((a,b)=>a.fecha<b.fecha?1:-1).map(e=>{
         const fut = e.fecha>=hoyISO();
         return `<div class="it"><span class="pun" style="background:${fut?'var(--ceibo)':'var(--tinta-3)'}"></span>
@@ -3199,6 +3288,293 @@ function waProveedor(id){
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · CONFIGURACIÓN
    ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   VISTA · GASTOS (control de gastos fijos y variables, por mes y por año)
+   ══════════════════════════════════════════════════════════════════════ */
+const estadoGasto = g => g.estado==='Pagado' ? 'Pagado'
+  : (g.vence && g.vence < hoyISO() ? 'Vencido' : 'Pendiente');
+const gastosDeMes  = m => T('gastos').filter(g=>mesDe(g.fecha)===m);
+const gastosDeAnio = a => T('gastos').filter(g=>g.fecha.slice(0,4)===String(a));
+const sumaG = arr => suma(arr, g=>g.monto);
+/* la mercadería no se carga como gasto: ya está en Proveedores, se trae de ahí */
+const mercaderiaMes  = m => suma(T('ingresos').filter(i=>mesDe(i.fecha)===m), i=>i.total);
+const mercaderiaAnio = a => suma(T('ingresos').filter(i=>i.fecha.slice(0,4)===String(a)), i=>i.total);
+const ventasDeMes  = m => totalDe(ventasT().filter(v=>mesDe(v.fecha)===m));
+const aniosConGastos = () => {
+  const a = [...new Set(T('gastos').map(g=>g.fecha.slice(0,4)))].sort();
+  return a.length? a : [String(hoy().getFullYear())];
+};
+
+VISTAS.gastos = function(){
+  const sub = ESTADO.sub || 'mes';
+  return `
+  <div class="cab">
+    <div><div class="filo"></div><h2>Gastos</h2>
+      <div class="sub">Todo lo que sale de ${esc(tienda().nombre)}: los gastos fijos de todos los meses y los
+        variables. Mirálo mes a mes o el año entero.</div></div>
+    <div class="acc">
+      <button class="btn sec" onclick="exportarGastos()">⤓ Excel</button>
+      <button class="btn" onclick="formGasto()">＋ Nuevo gasto</button></div>
+  </div>
+  <div class="seg" style="margin-bottom:16px">
+    <button class="${sub==='mes'?'on':''}" onclick="ir('gastos','mes')">Mes a mes</button>
+    <button class="${sub==='anio'?'on':''}" onclick="ir('gastos','anio')">Año completo</button>
+  </div>
+  ${sub==='anio' ? gastosAnual() : gastosMensual()}`;
+};
+
+/* ───────── mes a mes ───────── */
+function gastosMensual(){
+  const mes = ESTADO.filtros.mes || hoyISO().slice(0,7);
+  const gs = gastosDeMes(mes).sort((a,b)=>a.fecha<b.fecha?1:-1);
+  const fijos = gs.filter(g=>g.tipo==='Fijo'), vars = gs.filter(g=>g.tipo!=='Fijo');
+  const merc = mercaderiaMes(mes), vta = ventasDeMes(mes);
+  const total = sumaG(gs), conMerc = total + merc;
+  const pend = gs.filter(g=>estadoGasto(g)!=='Pagado');
+  const venc = gs.filter(g=>estadoGasto(g)==='Vencido');
+  /* el mes anterior, para comparar */
+  const d = new Date(mes+'-01T12:00:00'); d.setMonth(d.getMonth()-1);
+  const mesPrev = iso(d).slice(0,7), totalPrev = sumaG(gastosDeMes(mesPrev));
+
+  /* por categoría */
+  const porCat = {};
+  gs.forEach(g=>{ porCat[g.categoria] = (porCat[g.categoria]||0)+g.monto; });
+  const cats = Object.keys(porCat).sort((a,b)=>porCat[b]-porCat[a]);
+
+  alDibujar(()=>{
+    graf('g-gtipo',{type:'doughnut',
+      data:{labels:['Gastos fijos','Gastos variables','Mercadería'],
+        datasets:[{data:[sumaG(fijos),sumaG(vars),merc], borderWidth:2, borderColor:'#fff',
+          backgroundColor:[tienda().pastel[0], tienda().pastel[1], tienda().pastel[3]]}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+        plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,usePointStyle:true,pointStyle:'circle'}},
+          tooltip:{callbacks:{label:c=>c.label+': '+money(c.parsed)}}}}});
+    graf('g-gcat',{type:'bar',
+      data:{labels:cats.map(c=>c.length>18?c.slice(0,17)+'…':c),
+        datasets:[{data:cats.map(c=>porCat[c]), borderRadius:5, maxBarThickness:26,
+          backgroundColor:cats.map(c=>tipoDeCat(c)==='Fijo'?tienda().pastel[0]:tienda().pastel[1])}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.parsed.x)}}},
+        scales:{x:{border:{display:false},grid:{color:'#F0E8DE'},ticks:{callback:v=>moneyK(v)}},
+          y:{grid:{display:false}}}}});
+  });
+
+  return `
+  <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px">
+    <button class="ico-btn" onclick="moverMesGasto(-1)">‹</button>
+    <div style="font-family:var(--f-titulo);font-size:19px;min-width:170px;text-align:center">${esc(mesNom(mes))}</div>
+    <button class="ico-btn" onclick="moverMesGasto(1)">›</button>
+    <button class="btn sec chico" onclick="ESTADO.filtros.mes='';render()">Este mes</button>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sec chico" onclick="copiarFijos()">⟳ Cargar los fijos de este mes</button>
+    </div>
+  </div>
+
+  <div class="grid g5">
+    ${kpi({tit:'Gastos del mes', val:money(total), clase:'k-ceibo',
+      pie: delta(totalPrev? (total/totalPrev-1)*100 : null, 'vs. mes pasado')})}
+    ${kpi({tit:'Fijos', val:money(sumaG(fijos)), pie:`<span>${fijos.length} gastos · siempre los mismos</span>`})}
+    ${kpi({tit:'Variables', val:money(sumaG(vars)), clase:'k-oliva', pie:`<span>${vars.length} gastos del mes</span>`})}
+    ${kpi({tit:'Mercadería comprada', val: vePlata()? money(merc):'—', clase:'k-info',
+      pie:`<a style="cursor:pointer" onclick="ir('proveedores')">viene de Proveedores →</a>`})}
+    ${kpi({tit:'Sin pagar', val:money(sumaG(pend)), clase:'k-gris',
+      pie: venc.length? `<span class="chip mal">${venc.length} vencidos</span>` : `<span>${pend.length} pendientes</span>`})}
+  </div>
+
+  ${vePlata()? `<div class="aviso ${conMerc>vta?'al':'ok'} mt"><span class="em">◷</span><div>
+    En ${esc(mesNom(mes))} vendiste <b>${money(vta)}</b> y gastaste <b>${money(conMerc)}</b>
+    (gastos + mercadería): el <b>${vta? Math.round(conMerc/vta*100):0}%</b> de lo que entró.
+    Quedan <b>${money(vta-conMerc)}</b>.</div></div>`:''}
+
+  <div class="grid g-1-2 mt">
+    ${card('En qué se va la plata', `<div class="graf"><canvas id="g-gtipo"></canvas></div>`,{sub:esc(mesNom(mes))})}
+    ${card('Por categoría', `<div class="graf" style="height:${Math.max(200,cats.length*30)}px"><canvas id="g-gcat"></canvas></div>
+      <div class="mini" style="margin-top:8px">En el color principal los fijos; en el otro, los variables.</div>`)}
+  </div>
+
+  ${card('Los gastos de '+esc(mesNom(mes)), gs.length? `
+    <div class="filtros">
+      <select onchange="ESTADO.filtros.tipo=this.value; repintar('gas-lista', tablaGastos())">
+        <option value="">Fijos y variables</option><option>Fijo</option><option>Variable</option></select>
+      <select onchange="ESTADO.filtros.est=this.value; repintar('gas-lista', tablaGastos())">
+        <option value="">Todos los estados</option><option>Pagado</option><option>Pendiente</option><option>Vencido</option></select>
+    </div>
+    <div id="gas-lista">${tablaGastos()}</div>`
+    : vacio('Todavía no hay gastos cargados en este mes'), {clase:'mt',
+      acc:`<button class="btn chico" onclick="formGasto()">＋ Nuevo gasto</button>`})}`;
+}
+function moverMesGasto(n){
+  const m = ESTADO.filtros.mes || hoyISO().slice(0,7);
+  const d = new Date(m+'-01T12:00:00'); d.setMonth(d.getMonth()+n);
+  ESTADO.filtros.mes = iso(d).slice(0,7); render();
+}
+function tablaGastos(){
+  const mes = ESTADO.filtros.mes || hoyISO().slice(0,7);
+  let gs = gastosDeMes(mes).sort((a,b)=>a.fecha<b.fecha?1:-1);
+  if(ESTADO.filtros.tipo) gs = gs.filter(g=>g.tipo===ESTADO.filtros.tipo);
+  if(ESTADO.filtros.est)  gs = gs.filter(g=>estadoGasto(g)===ESTADO.filtros.est);
+  if(!gs.length) return vacio('No hay gastos con ese filtro');
+  return `<div class="mini" style="margin-bottom:10px">${gs.length} gastos · <b>${money(sumaG(gs))}</b></div>
+  <div class="tabla-wrap"><table class="t resp"><thead><tr>
+    <th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Tipo</th><th>Vence</th><th>Estado</th>
+    <th class="der">Monto</th><th class="der"></th></tr></thead><tbody>
+    ${gs.map(g=>{ const e = estadoGasto(g);
+      return `<tr>
+      <td data-l="Fecha" class="principal"><b>${dmy(g.fecha)}</b></td>
+      <td data-l="Concepto">${esc(g.concepto)}${g.recurrente?' <span class="chip linea">se repite</span>':''}</td>
+      <td data-l="Categoría"><span class="mini">${esc(g.categoria)}</span></td>
+      <td data-l="Tipo"><span class="chip ${g.tipo==='Fijo'?'':'oliva'}">${esc(g.tipo)}</span></td>
+      <td data-l="Vence">${g.vence? dmy(g.vence):'—'}</td>
+      <td data-l="Estado">${e==='Pagado'? '<span class="chip ok">Pagado</span>'
+        : `<button class="chip ${e==='Vencido'?'mal':'al'}" onclick="pagarGasto('${g.id}')" title="Marcar como pagado">${e} ✓</button>`}</td>
+      <td data-l="Monto" class="der"><b>${money(g.monto)}</b></td>
+      <td class="der" style="white-space:nowrap">
+        <button class="ico-btn" onclick="formGasto('${g.id}')" title="Editar">✎</button></td>
+    </tr>`;}).join('')}
+  </tbody></table></div>`;
+}
+function pagarGasto(id){
+  const g = Store.get('gastos',id); if(!g) return;
+  g.estado='Pagado'; Store.upsert('gastos',g); render(); toast('Marcado como pagado');
+}
+function copiarFijos(){
+  const mes = ESTADO.filtros.mes || hoyISO().slice(0,7);
+  const d = new Date(mes+'-01T12:00:00'); d.setMonth(d.getMonth()-1);
+  const prev = iso(d).slice(0,7);
+  const yaHay = gastosDeMes(mes).map(g=>g.concepto);
+  const traer = gastosDeMes(prev).filter(g=>g.recurrente && !yaHay.includes(g.concepto));
+  if(!traer.length){ toast('Los fijos de este mes ya están cargados'); return; }
+  if(!confirm('Se van a copiar '+traer.length+' gastos fijos del mes pasado a '+mesNom(mes)+'. ¿Seguimos?')) return;
+  traer.forEach(g=> Store.upsert('gastos', {tienda:g.tienda, fecha:mes+'-05', concepto:g.concepto,
+    categoria:g.categoria, tipo:'Fijo', monto:g.monto, medio:g.medio, estado:'Pendiente',
+    vence:mes+'-28', recurrente:true, notas:''}));
+  render(); toast(traer.length+' gastos fijos cargados');
+}
+
+/* ───────── año completo ───────── */
+function gastosAnual(){
+  const anio = ESTADO.filtros.anio || String(hoy().getFullYear());
+  const gs = gastosDeAnio(anio);
+  const meses = []; for(let m=1;m<=12;m++) meses.push(anio+'-'+String(m).padStart(2,'0'));
+  const porMesTipo = t => meses.map(m=> sumaG(gs.filter(g=>mesDe(g.fecha)===m && (t==='Fijo'? g.tipo==='Fijo':g.tipo!=='Fijo'))));
+  const fij = porMesTipo('Fijo'), vari = porMesTipo('Variable');
+  const merc = meses.map(m=>mercaderiaMes(m));
+  const vtas = meses.map(m=>ventasDeMes(m));
+  const vtasGraf = vtas.map(v=>v||null);   // sin ventas = sin punto, no un cero
+  const totalAnio = sumaG(gs), mercAnio = mercaderiaAnio(anio);
+  const conDatos = meses.filter((m,i)=> fij[i]+vari[i]>0).length || 1;
+
+  alDibujar(()=>{
+    graf('g-anio',{data:{labels:MES_NOM.map(m=>m.slice(0,3)), datasets:[
+      {type:'bar', label:'Fijos', data:fij, backgroundColor:tienda().pastel[0], borderRadius:4, stack:'g'},
+      {type:'bar', label:'Variables', data:vari, backgroundColor:tienda().pastel[1], borderRadius:4, stack:'g'},
+      {type:'bar', label:'Mercadería', data:merc, backgroundColor:tienda().pastel[3], borderRadius:4, stack:'g'},
+      {type:'line', label:'Ventas', data:vtasGraf, borderColor:tienda().tema['--ceibo'], borderWidth:2.4,
+       tension:.3, pointRadius:3, pointBackgroundColor:tienda().tema['--ceibo'], fill:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,usePointStyle:true,pointStyle:'circle'}},
+          tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.y)}}},
+        scales:{x:{stacked:true,grid:{display:false}},
+          y:{stacked:true,border:{display:false},grid:{color:'#F0E8DE'},ticks:{callback:v=>moneyK(v)}}}}});
+  });
+
+  /* planilla: una fila por categoría, una columna por mes */
+  const fila = (cat) => {
+    const vals = meses.map(m=> sumaG(gs.filter(g=>mesDe(g.fecha)===m && g.categoria===cat)));
+    return {cat, vals, total: vals.reduce((a,b)=>a+b,0)};
+  };
+  const filasF = CAT_GASTO.Fijo.map(fila).filter(f=>f.total>0);
+  const filasV = CAT_GASTO.Variable.map(fila).filter(f=>f.total>0);
+  const sumaCols = fs => meses.map((m,i)=> fs.reduce((a,f)=>a+f.vals[i],0));
+  const totF = sumaCols(filasF), totV = sumaCols(filasV);
+  const totG = meses.map((m,i)=> totF[i]+totV[i]+merc[i]);
+  const celda = v => v? money(v) : '<span style="color:var(--tinta-3)">—</span>';
+  const linea = (nom, vals, clase) => `<tr class="${clase||''}">
+    <td><b>${esc(nom)}</b></td>${vals.map(v=>`<td class="der">${celda(v)}</td>`).join('')}
+    <td class="der"><b>${money(vals.reduce((a,b)=>a+b,0))}</b></td></tr>`;
+
+  return `
+  <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px">
+    <span class="etiqueta">Año</span>
+    <select style="width:auto" onchange="ESTADO.filtros.anio=this.value; render()">
+      ${aniosConGastos().map(a=>`<option ${a===anio?'selected':''}>${a}</option>`).join('')}
+    </select>
+    <div class="mini" style="margin-left:auto">${conDatos} meses con movimiento</div>
+  </div>
+
+  <div class="grid g4">
+    ${kpi({tit:'Gastos del año', val:money(totalAnio), clase:'k-ceibo',
+      pie:`<span>promedio ${money(totalAnio/conDatos)} por mes</span>`})}
+    ${kpi({tit:'Fijos del año', val:money(sumaG(gs.filter(g=>g.tipo==='Fijo'))),
+      pie:`<span>${totalAnio?Math.round(sumaG(gs.filter(g=>g.tipo==='Fijo'))/totalAnio*100):0}% de los gastos</span>`})}
+    ${kpi({tit:'Variables del año', val:money(sumaG(gs.filter(g=>g.tipo!=='Fijo'))), clase:'k-oliva',
+      pie:`<span>${totalAnio?Math.round(sumaG(gs.filter(g=>g.tipo!=='Fijo'))/totalAnio*100):0}% de los gastos</span>`})}
+    ${kpi({tit:'Mercadería del año', val: vePlata()? money(mercAnio):'—', clase:'k-info',
+      pie:`<span>compras a proveedores</span>`})}
+  </div>
+
+  ${card('Mes a mes', `<div class="graf alto"><canvas id="g-anio"></canvas></div>
+    <div class="mini" style="margin-top:8px">Las barras son lo que sale; la línea, lo que entra por ventas.</div>`,
+    {clase:'mt', sub:'Gastos y ventas de '+anio})}
+
+  ${card('La planilla del año', `
+    <div class="tabla-wrap"><table class="t t-cruz"><thead><tr>
+      <th>Categoría</th>${MES_NOM.map(m=>`<th class="der">${m.slice(0,3)}</th>`).join('')}<th class="der">Año</th>
+    </tr></thead><tbody>
+      <tr class="g-sep"><td colspan="14">GASTOS FIJOS</td></tr>
+      ${filasF.map(f=>linea(f.cat,f.vals)).join('')}
+      ${linea('Total fijos', totF, 'g-sub')}
+      <tr class="g-sep"><td colspan="14">GASTOS VARIABLES</td></tr>
+      ${filasV.map(f=>linea(f.cat,f.vals)).join('')}
+      ${linea('Total variables', totV, 'g-sub')}
+      <tr class="g-sep"><td colspan="14">MERCADERÍA</td></tr>
+      ${linea('Compras a proveedores', merc)}
+      ${linea('TOTAL QUE SALE', totG, 'g-tot')}
+      ${vePlata()? linea('Ventas del mes', vtas, 'g-vta') : ''}
+      ${vePlata()? linea('Lo que queda', meses.map((m,i)=> totG[i]? vtas[i]-totG[i] : 0), 'g-res') : ''}
+    </tbody></table></div>
+    <div class="mini" style="margin-top:10px">Se desliza de costado para ver todos los meses.
+      La primera columna queda fija.</div>`, {clase:'mt',
+      acc:`<button class="btn chico sec" onclick="exportarGastos()">⤓ Excel</button>`})}`;
+}
+
+/* ───────── cargar y editar un gasto ───────── */
+function formGasto(id){
+  const g = id? Store.get('gastos',id) : {fecha:hoyISO(), tipo:'Fijo', estado:'Pendiente'};
+  formGen({tit: id?'Editar gasto':'Nuevo gasto',
+    sub: id?'':'Los fijos se repiten todos los meses; los variables son los del momento.',
+    val:g, borrar: id?`if(confirm('¿Borrar este gasto?')){Store.del('gastos','${id}');cerrarModal();render();toast('Gasto borrado')}`:'',
+    campos:[
+      {k:'concepto', l:'¿Qué se pagó?', ancho:2, ph:'Alquiler del local, pauta en Instagram…'},
+      {k:'categoria', l:'Categoría', t:'select', op:CATS_GASTO,
+       onchange:"document.getElementById('f_tipo').value = ['"+CAT_GASTO.Fijo.join("','")+"'].indexOf(this.value)>=0?'Fijo':'Variable'"},
+      {k:'tipo', l:'Tipo', t:'select', op:['Fijo','Variable']},
+      {k:'monto', l:'Monto ($)', t:'number'},
+      {k:'fecha', l:'Fecha', t:'date'},
+      {k:'vence', l:'Vence', t:'date'},
+      {k:'medio', l:'Forma de pago', t:'select', op:MEDIOS.filter(m=>m!=='Fiado')},
+      {k:'estado', l:'Estado', t:'select', op:['Pendiente','Pagado']},
+      {k:'recurrente', l:'', t:'check', txt:'Se repite todos los meses (gasto fijo)', ancho:2},
+      {k:'notas', l:'Notas', t:'textarea', ancho:2}
+    ],
+    guardar(d){
+      if(!d.concepto){ toast('Falta decir qué se pagó'); return false; }
+      if(!d.monto){ toast('Falta el monto'); return false; }
+      d.id=id; d.tienda = (g&&g.tienda) || ESTADO.tienda;
+      if(!d.tipo) d.tipo = tipoDeCat(d.categoria);
+      Store.upsert('gastos', d); toast(id?'Gasto actualizado':'Gasto cargado');
+    }});
+}
+function exportarGastos(){
+  const anio = ESTADO.filtros.anio || String(hoy().getFullYear());
+  const gs = (ESTADO.sub==='anio' ? gastosDeAnio(anio) : gastosDeMes(ESTADO.filtros.mes || hoyISO().slice(0,7)))
+    .sort((a,b)=>a.fecha<b.fecha?-1:1);
+  descargarCSV('gastos_'+esc(tienda().nombre).replace(/ /g,'-'),
+    [['Tienda','Fecha','Concepto','Categoría','Tipo','Monto','Vence','Estado','Forma de pago','Notas'],
+     ...gs.map(g=>[tiendaNom(g.tienda), dmy(g.fecha), g.concepto, g.categoria, g.tipo, g.monto,
+        dmy(g.vence), estadoGasto(g), g.medio, g.notas])]);
+}
+
 VISTAS.config = function(){
   const us = T('usuarios');
   return `
