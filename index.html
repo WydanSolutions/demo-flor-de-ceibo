@@ -566,7 +566,7 @@ const CFG = {
   duena:'Vale Campos',
   lema:'Raíces uruguayas · Elegancia sin fronteras',
   instagram:'flordeceibobyvalecampos',
-  version:'demo-2026-10-20',
+  version:'demo-2026-10-23',
   moneda:'$',                 // pesos uruguayos
   dolar:41.20,                // cotización de referencia (se edita en Configuración)
   real:7.55,
@@ -964,17 +964,17 @@ function semilla(){
 
   /* ───── plantillas de mensaje (las usan las dos tiendas) ───── */
   db.plantillas = [
-    {id:'t1', nombre:'Llegó la colección nueva', icono:'✦',
+    {id:'t1', meta:'Aprobada', nombre:'Llegó la colección nueva', icono:'✦',
      texto:'¡Hola {nombre}! 🌺 Te escribo de {tienda}.\n\nYa llegó la colección {coleccion} y tenemos cosas en tu talle {talle}.\nTe guardo lo que te guste para que lo veas tranquila en {local}.\n\nAcá te dejo algunas fotos 👇'},
-    {id:'t2', nombre:'Hace rato que no te vemos', icono:'♡',
+    {id:'t2', meta:'Aprobada', nombre:'Hace rato que no te vemos', icono:'♡',
      texto:'Hola {nombre}, ¿cómo andás? 🌺\n\nHace un tiempito que no pasás por {tienda} y entraron cosas preciosas.\nTe dejo un {cupon} para que estrenes algo esta semana.\n\n¡Te esperamos en {local}!'},
-    {id:'t3', nombre:'Saludo de cumpleaños', icono:'✧',
+    {id:'t3', meta:'Aprobada', nombre:'Saludo de cumpleaños', icono:'✧',
      texto:'¡Feliz cumple, {nombre}! 🎉🌺\n\nDe parte de todo el equipo de {tienda} te deseamos un año hermoso.\nTe dejamos un {cupon} para que te regales algo lindo. Válido todo el mes.\n\n¡Te esperamos!'},
-    {id:'t4', nombre:'Invitación a desfile / evento', icono:'❖',
+    {id:'t4', meta:'En revisión', nombre:'Invitación a desfile / evento', icono:'❖',
      texto:'{nombre}, te invitamos 🌺\n\n{evento}\n📍 {local}\n\nVas a poder ver la colección antes que nadie y probarte lo que quieras.\nConfirmame por acá así te reservo lugar 💌'},
-    {id:'t5', nombre:'Llegó tu talle / lo que esperabas', icono:'✓',
+    {id:'t5', meta:'Aprobada', nombre:'Llegó tu talle / lo que esperabas', icono:'✓',
      texto:'¡{nombre}! 🌺 Llegó a {tienda} lo que estabas esperando.\n\nTenemos disponible en talle {talle} lo que habías consultado.\nTe lo reservo por 48 horas, avisame y te lo guardo.'},
-    {id:'t6', nombre:'Liquidación de temporada', icono:'%',
+    {id:'t6', meta:'Rechazada', nombre:'Liquidación de temporada', icono:'%',
      texto:'Hola {nombre} 🌺\n\nEmpezó la liquidación de {coleccion} en {tienda}: hasta 40% en prendas seleccionadas.\nQuedan pocos talles, te aviso a vos primero 💌\n\n{local}'}
   ];
 
@@ -1372,6 +1372,13 @@ function logoHTML(id, clase){
     ? '<svg class="'+clase+'" viewBox="0 0 859 1018"><use href="#logo-fdc"/></svg>'
     : '<img class="'+clase+'" src="'+LOGO_TEV+'" alt="Tu Estilo Vale">';
 }
+/* en qué está cada plantilla para Meta (hace falta para el envío automático) */
+const chipMeta = m => {
+  const x = {'Aprobada':['ok','✓ Aprobada por Meta'], 'En revisión':['al','En revisión de Meta'],
+             'Rechazada':['mal','Meta la rechazó'], 'Sin enviar':['linea','Sin enviar a Meta']}[m||'Sin enviar']
+            || ['linea','Sin enviar a Meta'];
+  return '<span class="chip '+x[0]+'">'+x[1]+'</span>';
+};
 const chipTienda = id => '<span class="chip" style="background:'+(id==='FDC'?'#F3E3D5':'#FBE3E6')+
   ';color:'+(id==='FDC'?'#8A4A1E':'#C1516B')+'">'+esc(tiendaNom(id))+'</span>';
 
@@ -1451,7 +1458,9 @@ function nivelClienta(id){
   if(v>0) return {n:'Nueva', c:'linea'}; return {n:'Sin compras', c:'linea'};
 }
 /* SEGMENTOS: el corazón de las campañas */
+let SEL = [];   // los clientes que se eligen a mano, uno por uno
 const SEGMENTOS = [
+  {id:'manual',  nombre:'Los que yo elija, uno por uno',              f:c=>SEL.includes(c.id)},
   {id:'optin',   nombre:'Todas las que aceptaron recibir mensajes', f:c=>c.optin},
   {id:'dormidas',nombre:'Sin comprar hace más de 60 días',          f:c=>c.optin && diasSinComprar(c.id)>Store.cfg('diasSinComprar') && diasSinComprar(c.id)<9999},
   {id:'vip',     nombre:'VIP y clientas de eventos',                f:c=>c.optin && (esVIP(c)||(c.etiquetas||[]).includes('Novia / evento'))},
@@ -1506,7 +1515,7 @@ const TABS = [
   {id:'ventas',      nom:'Ventas',        ico:ICO.ventas},
   {id:'gastos',      nom:'Gastos',        ico:ICO.gastos},
   {id:'proveedores', nom:'Proveedores',   ico:ICO.prov},
-  {id:'marketing',   nom:'Marketing y redes', ico:ICO.mkt},
+  {id:'marketing',   nom:'Marketing',     ico:ICO.mkt},
   {id:'config',      nom:'Configuración', ico:ICO.config}
 ];
 
@@ -1873,16 +1882,19 @@ function tablaClientas(){
     : ord==='reciente' ? (ultimaCompra(b.id)||'').localeCompare(ultimaCompra(a.id)||'')
     : ord==='dormida' ? diasSinComprar(b.id)-diasSinComprar(a.id)
     : valorClienta(b.id)-valorClienta(a.id));
-  if(!cls.length) return vacio('No hay clientas con ese filtro');
+  if(!cls.length) return vacio('No hay clientes con ese filtro');
 
-  return `<div class="tabla-wrap"><table class="t resp"><thead><tr>
-    <th>Cliente</th><th>Compra en</th><th>Etiquetas</th><th class="cen">Compras</th><th class="der">Gastado</th>
+  return `<div id="cli-barra">${barraSel()}</div>
+  <div class="tabla-wrap"><table class="t resp"><thead><tr>
+    <th style="width:34px"></th><th>Cliente</th><th>Compra en</th><th>Etiquetas</th><th class="cen">Compras</th><th class="der">Gastado</th>
     <th>Última compra</th><th class="der">Debe</th><th class="der">Acciones</th></tr></thead><tbody>
     ${cls.map(c=>{
       const n = comprasDe(c.id).length, dd = diasSinComprar(c.id), sal = saldoClienta(c.id);
       const niv = nivelClienta(c.id);
       return `<tr>
-      <td data-l="Clienta" class="principal clic" onclick="fichaClienta('${c.id}')">
+      <td class="cen" style="width:34px"><input type="checkbox" ${SEL.includes(c.id)?'checked':''}
+        title="Elegir para escribirle" onclick="event.stopPropagation();toggleSel('${c.id}')"></td>
+      <td data-l="Cliente" class="principal clic" onclick="fichaClienta('${c.id}')">
         <div class="pro-fila">
           <span class="avatar ${colorTexto(c.nombre.length)}" style="width:34px;height:34px;font-size:14px">${inicial(c.nombre)}</span>
           <div><b class="nom">${esc(c.nombre)}</b>
@@ -2766,149 +2778,25 @@ function verIngreso(id){
    VISTA · MARKETING, REDES Y PUBLICIDAD
    ══════════════════════════════════════════════════════════════════════ */
 VISTAS.marketing = function(){
-  const sub = ESTADO.sub||'tablero';
-  const cuerpo = {tablero:mktTablero, whatsapp:mktWhatsApp, calendario:mktCalendario, pauta:mktPauta}[sub]();
+  const sub = ESTADO.sub==='calendario' ? 'calendario' : 'whatsapp';
+  const cuerpo = sub==='calendario' ? mktCalendario() : mktWhatsApp();
   return `
   <div class="cab">
-    <div><div class="filo"></div><h2>Marketing, redes y publicidad</h2>
-      <div class="sub">Qué estás publicando, a quién le escribís y — lo más importante — qué de todo eso termina en ventas.</div></div>
+    <div><div class="filo"></div><h2>Marketing y clientes</h2>
+      <div class="sub">A quién le escribís, qué le decís y qué de eso vuelve en ventas. Más el calendario de
+        lo que se publica y los eventos.</div></div>
     <div class="acc">
       <button class="btn sec" onclick="ir('marketing','calendario')">Calendario</button>
       <button class="btn" onclick="armarCampania('optin','t1')">＋ Nueva campaña</button></div>
   </div>
   <div class="seg" style="margin-bottom:16px">
-    <button class="${sub==='tablero'?'on':''}" onclick="ir('marketing','tablero')">Tablero de redes</button>
     <button class="${sub==='whatsapp'?'on':''}" onclick="ir('marketing','whatsapp')">Campañas de WhatsApp</button>
     <button class="${sub==='calendario'?'on':''}" onclick="ir('marketing','calendario')">Calendario y eventos</button>
-    <button class="${sub==='pauta'?'on':''}" onclick="ir('marketing','pauta')">Publicidad paga</button>
   </div>
   ${cuerpo}`;
 };
 
 /* ───────── tablero de redes + cruce redes/ventas ───────── */
-function mktTablero(){
-  const mesAct = hoyISO().slice(0,7);
-  const dPrev=new Date(); dPrev.setMonth(dPrev.getMonth()-1); const mesPrev=iso(dPrev).slice(0,7);
-  const segTot = seguidoresTotal();
-  const segPrev = suma(REDES.map(r=>(T('redes').find(x=>x.red===r.id && x.mes===mesPrev)||{}).seguidores||0));
-  const alc = alcanceMes();
-  const inter = suma(REDES.map(r=>Redes.ultimo(r.id).interacciones||0));
-  const posts = T('posts').filter(p=>p.estado==='publicado');
-  const ventasRedes = posts.reduce((s,p)=>s+p.ventas,0);
-  const montoRedes = posts.reduce((s,p)=>s+p.monto,0);
-
-  alDibujar(()=>{
-    const meses = [...new Set(T('redes').map(r=>r.mes))].sort();
-    graf('g-seg',{type:'line', data:{labels:meses.map(m=>MES_NOM[+m.slice(5,7)-1].slice(0,3)),
-      datasets:REDES.map(r=>({label:r.nombre, borderColor:r.color, backgroundColor:r.color+'22', tension:.35,
-        pointRadius:0, borderWidth:2.4, fill:false,
-        data:meses.map(m=>(T('redes').find(x=>x.red===r.id && x.mes===m)||{}).seguidores||0)}))},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,usePointStyle:true,pointStyle:'circle'}}},
-        scales:{x:{grid:{display:false}},y:{border:{display:false},grid:{color:'#F0E8DE'}}}}});
-    // alcance vs ventas atribuidas, por semana
-    const sem=[], alcS=[], venS=[];
-    for(let i=7;i>=0;i--){ const f=masDias(hoyISO(),-(i*7+6)), t=masDias(hoyISO(),-i*7);
-      sem.push(dm(t));
-      alcS.push(suma(posts.filter(p=>p.fecha>=f&&p.fecha<=t),p=>p.alcance));
-      venS.push(suma(posts.filter(p=>p.fecha>=f&&p.fecha<=t),p=>p.monto)); }
-    graf('g-cruce',{data:{labels:sem, datasets:[
-      {type:'bar', label:'Alcance en redes', data:alcS, backgroundColor:'#E3D6C6', borderRadius:5, yAxisID:'y'},
-      {type:'line', label:'Ventas que vinieron de ahí', data:venS, borderColor:'#C62B22', backgroundColor:'#C62B2220',
-       tension:.35, borderWidth:2.6, pointRadius:3, pointBackgroundColor:'#C62B22', yAxisID:'y1', fill:true}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,usePointStyle:true,pointStyle:'circle'}},
-          tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y1'? 'Ventas: '+money(c.parsed.y): 'Alcance: '+nf0.format(c.parsed.y)}}},
-        scales:{x:{grid:{display:false}},
-          y:{position:'left',border:{display:false},grid:{color:'#F0E8DE'},ticks:{callback:v=>v>=1000?(v/1000)+'k':v}},
-          y1:{position:'right',border:{display:false},grid:{display:false},ticks:{callback:v=>moneyK(v)}}}}});
-  });
-
-  const ranking = posts.slice().sort((a,b)=>b.monto-a.monto);
-  return `
-  <div class="aviso" style="margin-bottom:16px"><span class="em">◐</span><div>
-    <b>Los números de redes de esta demostración están simulados</b> (del orden de los reales: ~1.850 seguidores en Instagram).
-    Para que se actualicen solos hay que conectar las cuentas de Instagram, Facebook y TikTok — eso es la segunda etapa.
-    Lo que sí es real es <b>cómo se cruzan con las ventas</b>: eso sale de tus propios datos.</div></div>
-
-  <div class="grid g4">
-    ${kpi({tit:'Seguidores', val:nf0.format(segTot), clase:'k-ceibo',
-      pie: delta(segPrev? (segTot/segPrev-1)*100:null, 'este mes')})}
-    ${kpi({tit:'Alcance del mes', val:nf0.format(alc), clase:'k-info',
-      pie:`<span>personas distintas que te vieron</span>`})}
-    ${kpi({tit:'Interacciones', val:nf0.format(inter), clase:'k-oliva',
-      pie:`<span>${alc?nf1.format(inter/alc*100):0}% de los que te ven reaccionan</span>`})}
-    ${kpi({tit:'Ventas que vinieron de redes', val:money(montoRedes),
-      pie:`<span>${ventasRedes} ventas atribuidas</span>`})}
-  </div>
-
-  <div class="grid g3 mt">
-    ${REDES.map(r=>{ const u=Redes.ultimo(r.id);
-      const prev=(T('redes').find(x=>x.red===r.id && x.mes===mesPrev)||{});
-      const cre = prev.seguidores? (u.seguidores/prev.seguidores-1)*100 : 0;
-      const pr = posts.filter(p=>p.red===r.id);
-      return `<div class="card">
-        <div class="h-fila"><div><h3>${esc(r.nombre)}</h3>
-          <div class="sub">${pr.length} publicaciones en 2 meses</div></div>
-          <div class="acc"><span class="chip" style="background:${r.color}18;color:${r.color}">${r.em}</span></div></div>
-        <div class="val serif" style="font-size:30px">${nf0.format(u.seguidores||0)}</div>
-        <div class="pie mini" style="margin:2px 0 12px">seguidores · ${delta(cre,'')}</div>
-        <div class="lista">
-          <div class="it"><div class="txt"><span>Alcance del mes</span><b>${nf0.format(u.alcance||0)}</b></div></div>
-          <div class="it"><div class="txt"><span>Interacciones</span><b>${nf0.format(u.interacciones||0)}</b></div></div>
-          <div class="it"><div class="txt"><span>Ventas atribuidas</span><b>${money(suma(pr,p=>p.monto))}</b></div></div>
-        </div></div>`;}).join('')}
-  </div>
-
-  <div class="grid g2 mt">
-    ${card('Cómo crecen tus redes', `<div class="graf alto"><canvas id="g-seg"></canvas></div>`,{sub:'Seguidores, últimos 12 meses'})}
-    ${card('Lo que publicás ¿vende?', `<div class="graf alto"><canvas id="g-cruce"></canvas></div>
-      <div class="mini" style="margin-top:8px">Barras: cuánta gente te vio. Línea roja: la plata que entró por esas publicaciones.</div>`,
-      {sub:'Semana a semana'})}
-  </div>
-
-  ${card('Qué contenido te trae plata', `
-    <div class="tabla-wrap"><table class="t resp"><thead><tr>
-      <th>Publicación</th><th>Red</th><th>Fecha</th><th class="der">Alcance</th><th class="der">Interacciones</th>
-      <th class="der">Ventas</th><th class="der">Facturó</th><th>Rendimiento</th></tr></thead><tbody>
-      ${ranking.map(p=>{ const red=REDES.find(r=>r.id===p.red)||{};
-        const efi = p.alcance? p.monto/p.alcance*1000 : 0;
-        const mx = Math.max(...ranking.map(x=>x.alcance?x.monto/x.alcance*1000:0),1);
-        return `<tr>
-        <td data-l="Publicación" class="principal"><b class="nom">${esc(p.titulo)}</b>
-          <div class="sub2">${esc(p.tipo)}</div></td>
-        <td data-l="Red"><span class="chip" style="background:${red.color}18;color:${red.color}">${esc(red.nombre||'')}</span></td>
-        <td data-l="Fecha">${dmy(p.fecha)}</td>
-        <td data-l="Alcance" class="der">${nf0.format(p.alcance)}</td>
-        <td data-l="Interacciones" class="der">${nf0.format(p.interacciones)}</td>
-        <td data-l="Ventas" class="der">${p.ventas||'—'}</td>
-        <td data-l="Facturó" class="der"><b>${p.monto?money(p.monto):'—'}</b></td>
-        <td data-l="Rendimiento" style="min-width:120px">
-          <div class="barra ${efi>mx*0.6?'ceibo':''}"><i style="width:${Math.round(efi/mx*100)}%"></i></div>
-          <span class="sub2">${money(efi)} por cada 1.000 vistas</span></td>
-      </tr>`;}).join('')}
-    </tbody></table></div>`, {clase:'mt', sub:'Publicaciones ordenadas por lo que facturaron'})}
-
-  <div class="grid g2 mt">
-    ${card('Sugerencias', sugerencias().map(s=>`
-      <div class="idea-card" style="margin-bottom:9px"><div class="em">${s.em}</div>
-        <div style="flex:1"><b>${esc(s.tit)}</b><p>${s.txt}</p></div>
-        ${s.accion?`<button class="btn chico sec" onclick="${s.accion}">${esc(s.btn)}</button>`:''}</div>`).join(''))}
-    ${card('Lo que viene', `<div class="lista">
-      ${T('eventos').filter(e=>e.fecha>=hoyISO()).sort((a,b)=>a.fecha<b.fecha?-1:1).map(e=>`
-        <div class="it"><span class="pun" style="background:var(--ceibo)"></span>
-          <div class="txt"><b>${esc(e.nombre)}</b><span>${dmy(e.fecha)} · ${esc(e.hora)} · ${esc(e.lugar)}</span></div>
-          <div class="fin"><span class="chip">${e.confirmadas}/${e.invitadas}</span></div></div>`).join('')}
-      ${T('posts').filter(p=>p.estado!=='publicado').sort((a,b)=>a.fecha<b.fecha?-1:1).map(p=>`
-        <div class="it"><span class="pun" style="background:var(--oliva)"></span>
-          <div class="txt"><b>${esc(p.titulo)}</b><span>${dmy(p.fecha)} · ${esc(p.tipo)} en ${esc((REDES.find(r=>r.id===p.red)||{}).nombre)}</span></div>
-          <div class="fin">${chipEstado(p.estado)}</div></div>`).join('')}
-    </div>
-    <button class="btn sec chico" style="margin-top:12px" onclick="formPost()">＋ Agendar publicación</button>`)}
-  </div>`;
-}
-
-/* ───────── calendario de contenido y eventos ───────── */
 function mktCalendario(){
   const base = ESTADO.filtros.mes || hoyISO().slice(0,7);
   const [ay,am] = base.split('-').map(Number);
@@ -2978,55 +2866,6 @@ function ideasContenido(){
 }
 
 /* ───────── publicidad paga ───────── */
-function mktPauta(){
-  const ads = T('ads');
-  const inv = suma(ads,a=>a.invertido), ret = suma(ads,a=>a.retorno);
-  alDibujar(()=>{
-    graf('g-ads',{type:'bar', data:{labels:ads.map(a=>a.nombre),
-      datasets:[{label:'Invertido', data:ads.map(a=>a.invertido), backgroundColor:'#D9C7AE', borderRadius:5},
-                {label:'Volvió en ventas', data:ads.map(a=>a.retorno), backgroundColor:'#6E7548', borderRadius:5}]},
-      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-        plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,usePointStyle:true,pointStyle:'circle'}},
-          tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.x)}}},
-        scales:{x:{border:{display:false},grid:{color:'#F0E8DE'},ticks:{callback:v=>moneyK(v)}},y:{grid:{display:false}}}}});
-  });
-  return `
-  <div class="grid g4">
-    ${kpi({tit:'Invertido en pauta', val:money(inv), pie:`<span>${ads.length} campañas</span>`})}
-    ${kpi({tit:'Volvió en ventas', val:money(ret), clase:'k-oliva',
-      pie:`<span>${inv?nf1.format(ret/inv):0}x por cada peso</span>`})}
-    ${kpi({tit:'Costo por clic', val:money(inv/Math.max(1,suma(ads,a=>a.clics))), clase:'k-info',
-      pie:`<span>${nf0.format(suma(ads,a=>a.clics))} clics</span>`})}
-    ${kpi({tit:'Ventas desde pauta', val:suma(ads,a=>a.ventas), clase:'k-ceibo',
-      pie:`<span>costo por venta ${money(inv/Math.max(1,suma(ads,a=>a.ventas)))}</span>`})}
-  </div>
-  ${card('Invertido vs. lo que volvió', `<div class="graf alto"><canvas id="g-ads"></canvas></div>`,{clase:'mt'})}
-  ${card('Detalle de campañas pagas', `
-    <div class="tabla-wrap"><table class="t resp"><thead><tr>
-      <th>Campaña</th><th>Red</th><th>Período</th><th class="der">Invertido</th><th class="der">Clics</th>
-      <th class="der">Ventas</th><th class="der">Volvió</th><th>Resultado</th><th class="der"></th></tr></thead><tbody>
-      ${ads.map(a=>{ const red=REDES.find(r=>r.id===a.red)||{}; const x = a.invertido? a.retorno/a.invertido : 0;
-        return `<tr>
-        <td data-l="Campaña" class="principal"><b class="nom">${esc(a.nombre)}</b></td>
-        <td data-l="Red"><span class="chip" style="background:${red.color}18;color:${red.color}">${esc(red.nombre)}</span></td>
-        <td data-l="Período"><span class="mini">${dm(a.desde)} al ${dm(a.hasta)}</span></td>
-        <td data-l="Invertido" class="der">${money(a.invertido)}</td>
-        <td data-l="Clics" class="der">${nf0.format(a.clics)}</td>
-        <td data-l="Ventas" class="der">${a.ventas}</td>
-        <td data-l="Volvió" class="der"><b>${money(a.retorno)}</b></td>
-        <td data-l="Resultado">${a.hasta>=hoyISO()? '<span class="chip info">en curso</span>'
-          : x>=3? `<span class="chip ok">muy bien · ${nf1.format(x)}x</span>`
-          : x>=1.5? `<span class="chip al">aceptable · ${nf1.format(x)}x</span>`
-          : `<span class="chip mal">no rindió · ${nf1.format(x)}x</span>`}</td>
-        <td class="der"><button class="ico-btn" onclick="formAd('${a.id}')">✎</button></td>
-      </tr>`;}).join('')}
-    </tbody></table></div>
-    <div class="aviso mt"><span class="em">✦</span><div>
-      <b>Regla simple:</b> si por cada peso que ponés vuelven menos de dos, conviene cambiar la foto, el texto o a quién se le muestra.
-      Las campañas de acá se cargan a mano con lo que te muestra el administrador de anuncios; conectando la cuenta se actualizan solas.</div></div>`,
-    {clase:'mt', acc:`<button class="btn chico sec" onclick="formAd()">＋ Cargar campaña</button>`})}`;
-}
-
 /* ══════════════════════════════════════════════════════════════════════
    WHATSAPP · segmentos, plantillas, envío asistido y seguimiento
    ══════════════════════════════════════════════════════════════════════ */
@@ -3056,10 +2895,16 @@ function telefono(nom, texto){
 
 function mktWhatsApp(){
   const f = ESTADO.filtros;
-  const seg = f.seg || 'dormidas', pl = f.pl || 't2';
+  const seg = f.seg || 'dormidas';
   const cupon = f.cupon || '10% de descuento';
   const lista = clientasDe(seg);
-  const plant = Store.get('plantillas',pl) || Store.all('plantillas')[0];
+  /* las plantillas: se pueden ver todas o solo las que Meta ya aprobó */
+  const soloAprob = !!f.soloAprob;
+  const todasPl = Store.all('plantillas');
+  const plDisp = soloAprob ? todasPl.filter(p=>p.meta==='Aprobada') : todasPl;
+  const pl = (plDisp.find(p=>p.id===f.pl) ? f.pl : (plDisp[0]||todasPl[0]||{}).id);
+  const plant = Store.get('plantillas',pl) || todasPl[0];
+  const aprobada = plant && plant.meta==='Aprobada';
   const ejemplo = lista[0] || Store.all('clientas')[0];
   CL_EJEMPLO = ejemplo;
   const camps = T('campanas').sort((a,b)=>a.fecha<b.fecha?1:-1);
@@ -3074,7 +2919,7 @@ function mktWhatsApp(){
     ${kpi({tit:'Facturado por campañas', val:money(totMon), clase:'k-ceibo',
       pie:`<span>ticket ${money(totVen?totMon/totVen:0)}</span>`})}
     ${kpi({tit:'Clientes alcanzables', val:Store.all('clientas').filter(c=>c.optin).length, clase:'k-info',
-      pie:`<span>las que dieron su consentimiento</span>`})}
+      pie:`<span>los que dieron su consentimiento</span>`})}
   </div>
 
   <div class="grid g-2-1 mt">
@@ -3086,16 +2931,24 @@ function mktWhatsApp(){
           </select></label>
         <label class="cpo"><span>2 · ¿Qué les digo?</span>
           <select onchange="ESTADO.filtros.pl=this.value; render()">
-            ${Store.all('plantillas').map(p=>`<option value="${p.id}" ${p.id===pl?'selected':''}>${esc(p.nombre)}</option>`).join('')}
+            ${plDisp.map(p=>`<option value="${p.id}" ${p.id===pl?'selected':''}>${esc(p.nombre)}</option>`).join('')
+              || '<option>No hay plantillas aprobadas todavía</option>'}
           </select></label>
       </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-4px 0 12px">
+        <div class="seg">
+          <button class="${soloAprob?'':'on'}" onclick="ESTADO.filtros.soloAprob=false;render()">Todas las plantillas</button>
+          <button class="${soloAprob?'on':''}" onclick="ESTADO.filtros.soloAprob=true;render()">Solo las aprobadas por Meta</button>
+        </div>
+        ${plant? chipMeta(plant.meta):''}
+      </div>
       <label class="cpo"><span>Texto del mensaje (los datos entre llaves se completan solos)</span>
-        <textarea id="wa-texto" style="min-height:150px" oninput="repintar('wa-prev', telefono('${esc((ejemplo||{}).nombre||'Clienta')}', aplicarPlantilla(this.value, CL_EJEMPLO, {cupon:ESTADO.filtros.cupon||'10% de descuento'})))">${esc(plant.texto)}</textarea></label>
+        <textarea id="wa-texto" style="min-height:150px" oninput="repintar('wa-prev', telefono('${esc((ejemplo||{}).nombre||'Clienta')}', aplicarPlantilla(this.value, CL_EJEMPLO, {cupon:ESTADO.filtros.cupon||'10% de descuento'})))">${esc((plant||{}).texto||'')}</textarea></label>
       <div class="grid g2" style="gap:12px">
         <label class="cpo"><span>Cupón / beneficio</span>
           <input value="${esc(cupon)}" oninput="ESTADO.filtros.cupon=this.value"></label>
         <label class="cpo"><span>Nombre de la campaña</span>
-          <input id="wa-nombre" value="${esc(plant.nombre)} — ${esc(mesNom(hoyISO().slice(0,7)))}"></label>
+          <input id="wa-nombre" value="${esc((plant||{}).nombre||'Campaña')} — ${esc(mesNom(hoyISO().slice(0,7)))}"></label>
       </div>
       <div class="chips" style="margin-bottom:14px">
         ${['{nombre}','{talle}','{cupon}','{coleccion}','{tienda}','{local}','{evento}'].map(v=>
@@ -3107,28 +2960,32 @@ function mktWhatsApp(){
       </div>
       <div class="aviso al" style="margin-top:14px"><span class="em">◐</span><div>
         <b>Envío automático masivo:</b> mandar los ${lista.length} mensajes de una sola vez, sin tocar nada, requiere la
-        <b>API de WhatsApp Business</b> (es paga y hay que habilitar la cuenta). Lo dejamos listo para enchufar.
-        Mientras tanto, el <b>envío asistido</b> de abajo manda uno por uno con un clic: es gratis y no hay riesgo de que
-        WhatsApp te bloquee el número.
+        <b>API de WhatsApp Business</b> (es paga y hay que habilitar la cuenta) y que <b>Meta apruebe la plantilla</b>.
+        Mientras tanto, el <b>envío asistido</b> de abajo manda uno por uno con un clic: es gratis, sirve con
+        cualquier texto y no hay riesgo de que WhatsApp te bloquee el número.
         <div style="margin-top:8px"><button class="btn chico sec" disabled>⚡ Enviar los ${lista.length} automáticamente</button>
-        <span class="chip linea" style="margin-left:6px">disponible con la API</span></div></div></div>`,
+        <span class="chip linea" style="margin-left:6px">disponible con la API</span>
+        ${aprobada? '<span class="chip ok" style="margin-left:4px">esta plantilla ya estaría lista</span>'
+          : '<span class="chip al" style="margin-left:4px">esta plantilla no serviría: falta la aprobación</span>'}</div></div></div>`,
       {sub:'Tres pasos: a quién, qué le digo, y mando'})}
 
     <div>
       ${card('Así le llega', `<div id="wa-prev">${telefono((ejemplo||{}).nombre||'Clienta',
-        aplicarPlantilla(plant.texto, ejemplo, {cupon}))}</div>`,{sub:'Vista previa real del mensaje'})}
-      ${card('A quiénes va', `
+        aplicarPlantilla((plant||{}).texto||'', ejemplo, {cupon}))}</div>`,{sub:'Vista previa real del mensaje'})}
+      ${ seg==='manual' ? cardElegirAMano() : card('A quiénes va', `
         <div class="etiqueta">Segmento</div>
         <div style="font-family:var(--f-titulo);font-size:19px;margin:4px 0 2px">${esc(segmento(seg).nombre)}</div>
         <div class="val serif" style="font-size:34px;color:var(--terracota)">${lista.length}</div>
-        <div class="mini" style="margin-bottom:12px">clientas · gastaron ${money(suma(lista,c=>valorClienta(c.id)))} en total</div>
+        <div class="mini" style="margin-bottom:12px">clientes · gastaron ${money(suma(lista,c=>valorClienta(c.id)))} en total</div>
         <div class="lista" style="max-height:210px;overflow:auto">
           ${lista.slice(0,12).map(c=>`<div class="it">
             <span class="avatar ${colorTexto(c.nombre.length)}" style="width:28px;height:28px;font-size:12px">${inicial(c.nombre)}</span>
             <div class="txt"><b>${esc(c.nombre)}</b><span>${esc(c.tel)}</span></div>
             <div class="fin">${c.optin?'':'<span class="chip mal">sin opt-in</span>'}</div></div>`).join('')}
           ${lista.length>12?`<div class="mini" style="padding-top:8px">y ${lista.length-12} más…</div>`:''}
-        </div>`,{clase:'mt'})}
+        </div>
+        <button class="btn sec chico" style="margin-top:12px" onclick="ESTADO.filtros.seg='manual';render()">
+          …o elegir uno por uno</button>`,{clase:'mt'})}
     </div>
   </div>
 
@@ -3153,15 +3010,75 @@ function mktWhatsApp(){
       </tr>`;}).join('')}
     </tbody></table></div>`, {clase:'mt', sub:'Historial completo: a quién, cuándo y qué resultado dio'})}
 
-  ${card('Plantillas guardadas', `<div class="grid g3">
-    ${Store.all('plantillas').map(p=>`<div class="idea-card" style="border-left-color:var(--terracota)">
+  ${card('Plantillas guardadas', `
+    <div class="aviso" style="margin-bottom:14px"><span class="em">◐</span><div>
+      Para el <b>envío automático</b>, Meta (WhatsApp Business) revisa cada plantilla y la aprueba, la deja en
+      revisión o la rechaza —suele rechazar las que son puro descuento—. Acá queda anotado en qué está cada una.
+      <b>El envío asistido, uno por uno, funciona igual con cualquier texto.</b></div></div>
+    <div class="grid g3">
+    ${todasPl.map(p=>`<div class="idea-card" style="border-left-color:${p.meta==='Aprobada'?'var(--ok)':p.meta==='Rechazada'?'var(--mal)':'var(--terracota)'}">
       <div class="em">${p.icono}</div>
       <div style="flex:1;min-width:0"><b>${esc(p.nombre)}</b>
+        <div style="margin:3px 0 5px">${chipMeta(p.meta)}</div>
         <p style="max-height:56px;overflow:hidden">${esc(p.texto.slice(0,110))}…</p>
-        <button class="btn chico sec" style="margin-top:8px" onclick="ESTADO.filtros.pl='${p.id}';render();window.scrollTo({top:0})">Usar</button>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn chico sec" onclick="ESTADO.filtros.pl='${p.id}';ESTADO.filtros.soloAprob=false;render();window.scrollTo({top:0})">Usar</button>
+          <button class="ico-btn" title="Editar" onclick="formPlantilla('${p.id}')">✎</button>
+        </div>
       </div></div>`).join('')}
     </div>`, {clase:'mt', acc:`<button class="btn chico sec" onclick="formPlantilla()">＋ Nueva plantilla</button>`})}`;
 }
+
+/* ── elegir uno por uno, sin etiquetas ── */
+function cardElegirAMano(){
+  return card('Elegí a quién le escribís', `
+    <div class="buscador" style="width:100%;margin-bottom:10px">
+      <input id="wa-buscar" placeholder="Buscar por nombre o teléfono…" style="width:100%"
+        oninput="repintar('wa-picker-lista', listaPicker(this.value))"></div>
+    <div id="wa-cuenta">${contadorSel()}</div>
+    <div id="wa-picker-lista" style="max-height:300px;overflow:auto;margin-top:8px">${listaPicker('')}</div>
+    <div class="mini" style="margin-top:10px">Sirve para escribirle a dos o tres personas puntuales, sin armar
+      ninguna etiqueta. También podés elegirlos desde la pestaña <b>Clientes</b>.</div>`,{clase:'mt'});
+}
+function listaPicker(q){
+  q = (q||'').toLowerCase();
+  let cls = Store.all('clientas');
+  if(q) cls = cls.filter(c=>(c.nombre+' '+c.tel+' '+c.ciudad).toLowerCase().includes(q));
+  else  cls = cls.slice().sort((a,b)=> (SEL.includes(b.id)?1:0)-(SEL.includes(a.id)?1:0) || a.nombre.localeCompare(b.nombre));
+  if(!cls.length) return vacio('Nadie con ese nombre');
+  return cls.slice(0,80).map(c=>{ const on = SEL.includes(c.id);
+    return `<div class="envio-fila ${on?'listo':''}" style="padding:7px 10px;margin-bottom:5px;cursor:pointer"
+      onclick="toggleSel('${c.id}')">
+      <input type="checkbox" ${on?'checked':''} onclick="event.stopPropagation();toggleSel('${c.id}')">
+      <span class="avatar ${colorTexto(c.nombre.length)}" style="width:28px;height:28px;font-size:12px">${inicial(c.nombre)}</span>
+      <div class="txt"><b>${esc(c.nombre)}</b><span>${esc(c.tel)}${c.talle?' · talle '+esc(c.talle):''}</span></div>
+      ${c.optin?'':'<span class="chip mal">sin opt-in</span>'}
+    </div>`;}).join('') + (cls.length>80? `<div class="mini" style="padding:6px">y ${cls.length-80} más: buscá por nombre</div>`:'');
+}
+function contadorSel(){
+  if(!SEL.length) return `<div class="mini">Todavía no elegiste a nadie. Tocá los nombres de la lista.</div>`;
+  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span class="chip ok">${SEL.length} elegido${SEL.length>1?'s':''}</span>
+    <button class="btn chico sec" onclick="limpiarSel()">Limpiar</button></div>`;
+}
+function toggleSel(id){
+  SEL = SEL.includes(id) ? SEL.filter(x=>x!==id) : SEL.concat(id);
+  const b = document.getElementById('wa-buscar');
+  repintar('wa-picker-lista', listaPicker(b? b.value : ''));
+  repintar('wa-cuenta', contadorSel());
+  const bc = document.getElementById('cli-barra'); if(bc) repintar('cli-barra', barraSel());
+}
+function limpiarSel(){ SEL = []; render(); }
+/* barra que aparece en la lista de Clientes cuando hay elegidos */
+function barraSel(){
+  if(!SEL.length) return '';
+  return `<div class="aviso ok" style="margin-bottom:12px">
+    <span class="em">✓</span><div style="flex:1"><b>${SEL.length} cliente${SEL.length>1?'s':''} elegido${SEL.length>1?'s':''}</b>
+      <div class="mini">${SEL.slice(0,6).map(i=>esc(clienteNom(i))).join(' · ')}${SEL.length>6?' y '+(SEL.length-6)+' más':''}</div></div>
+    <button class="btn chico wa" onclick="armarCampania('manual','t1')">Escribirles por WhatsApp</button>
+    <button class="btn chico sec" onclick="limpiarSel()">Limpiar</button></div>`;
+}
+
 let CL_EJEMPLO = null;
 function insertarVar(v){
   const t = $('#wa-texto'); if(!t) return;
@@ -3191,7 +3108,7 @@ function crearCampania(){
   const seg = ESTADO.filtros.seg||'dormidas';
   const texto = ($('#wa-texto')||{}).value || '';
   const nombre = ($('#wa-nombre')||{}).value || 'Campaña sin nombre';
-  const lista = clientasDe(seg).filter(c=>c.optin || seg==='todas');
+  const lista = clientasDe(seg).filter(c=>c.optin || seg==='todas' || seg==='manual');
   if(!lista.length){ toast('Ese segmento no tiene clientas'); return; }
   const c = Store.upsert('campanas', {nombre, fecha:hoyISO(), segmento:segmento(seg).nombre, segId:seg,
     texto, cupon:ESTADO.filtros.cupon||'', plantilla:ESTADO.filtros.pl, estado:'En curso',
@@ -4194,6 +4111,7 @@ function formPlantilla(id){
     aviso:'Podés usar {nombre}, {talle}, {cupon}, {coleccion}, {local} y {evento}: se completan solos con los datos de cada clienta.',
     val:p, campos:[
       {k:'nombre', l:'Nombre de la plantilla', ancho:2},
+      {k:'meta', l:'¿Qué dijo Meta?', t:'select', op:['Sin enviar','En revisión','Aprobada','Rechazada'], ancho:2},
       {k:'texto', l:'Mensaje', t:'textarea', ancho:2}
     ],
     guardar(d){ d.id=id; d.icono=p.icono||'✦'; Store.upsert('plantillas',d); toast('Plantilla guardada'); }});
