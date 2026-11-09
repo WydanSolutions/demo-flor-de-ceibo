@@ -313,6 +313,13 @@ button.etq-chip.apagada{background:#fff!important;color:var(--tinta-2)!important
 details.plegable > summary{cursor:pointer;font-size:12.5px;color:var(--tinta-2);font-weight:600;padding:4px 0;list-style:none}
 details.plegable > summary::before{content:'▸ ';}
 details.plegable[open] > summary::before{content:'▾ ';}
+@media (min-width:761px){ details.plegable.solo-cel > summary{display:none} }
+.msj-fila{padding:6px 9px;margin-bottom:5px;gap:9px}
+.msj-fila .txt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msj-fila .txt b .tel{font-weight:400;color:var(--tinta-2);font-size:12px}
+.msj-quien{flex:1 1 230px;min-width:0;margin-right:auto;font-size:13px}
+@media (min-width:900px){ .msj-enviar{padding-left:250px} }
+@media (max-width:760px){ .msj-quien{flex:1 1 100%} }
 @media (max-width:760px){ .msj-enviar{margin:14px -13px 0;padding:10px 13px;background:#fff;box-shadow:0 -6px 14px rgba(0,0,0,.07)}
   .msj-enviar .btn{flex:1 1 auto} .msj-lista{max-height:360px} }
 
@@ -3172,12 +3179,12 @@ VISTAS.marketing = function(){
       <div class="sub">A quién le escribís, qué le decís y qué de eso vuelve en ventas. Más el calendario de
         lo que se publica y los eventos.</div></div>
     <div class="acc">
-      <button class="btn sec" onclick="ir('marketing','calendario')">Calendario</button>
+
       ${sub==='whatsapp'?`<button class="btn" onclick="armarCampania('optin','t1')">＋ Nueva campaña</button>`:''}</div>
   </div>
   <div class="seg" style="margin-bottom:16px">
-    <button class="${sub==='mensajes'?'on':''}" onclick="ir('marketing','mensajes')">Mensajes</button>
-    <button class="${sub==='whatsapp'?'on':''}" onclick="ir('marketing','whatsapp')">Campañas Meta</button>
+    <button class="${sub==='mensajes'?'on':''}" onclick="ir('marketing','mensajes')">Mensajes${(n=>n?' · '+n+' hoy':'')(T('mensajes').filter(m=>m.fecha===hoyISO()).length)}</button>
+    <button class="${sub==='whatsapp'?'on':''}" onclick="ir('marketing','whatsapp')">Campañas Meta${(n=>n?' · '+n+' en curso':'')(T('campanas').filter(c=>c.estado==='En curso').length)}</button>
     <button class="${sub==='calendario'?'on':''}" onclick="ir('marketing','calendario')">Calendario y eventos</button>
   </div>
   ${cuerpo}`;
@@ -3950,6 +3957,8 @@ VISTAS.config = function(){
           <input type="number" step="0.01" value="${Store.cfg('dolar')}" onchange="Store.cfg('dolar',+this.value); toast('Guardado')"></label>
         <label class="cpo"><span>Real (para compras en Brasil)</span>
           <input type="number" step="0.01" value="${Store.cfg('real')}" onchange="Store.cfg('real',+this.value); toast('Guardado')"></label>
+        <label class="cpo"><span>Mensajes: no volver a escribirle antes de (días)</span>
+          <input type="number" min="0" value="${msjPausa()}" onchange="Store.cfg('msjPausa',Math.max(0,+this.value)); toast('Guardado')"></label>
         <label class="cpo"><span>Tu WhatsApp (para «Probármelo a mí»)</span>
           <input value="${esc(Store.cfg('telDuena')||'')}" placeholder="099 123 456" onchange="Store.cfg('telDuena',this.value.trim()); toast('Guardado')"></label>
       </div>
@@ -5235,7 +5244,8 @@ function telWa(tel, pais){
   if(pais==='Brasil') return '55'+d.replace(/^0/,'');
   return '598'+d.replace(/^0/,'');
 }
-let MSJ = {f:{etqs:[], etqModo:'alguna'}, sel:'', plantilla:'', texto:null, cupon:'', coleccion:'', cola:null, idx:0, paso:'', ids:null, _lista:[]};
+let MSJ = {f:{etqs:[], etqModo:'alguna'}, sel:'', plantilla:'', texto:null, cupon:'', coleccion:'', cola:null, idx:0, paso:'', ids:null, _lista:[], vista:'escribir'};
+const msjPausa = () => +Store.cfg('msjPausa') || 7;
 const msjTel = c => c ? telWa(c.tel, c.pais) : '';
 function ultimosMensajes(){ const m = {}; Store.all('mensajes').forEach(x=>{ if(!m[x.clienta] || x.fecha>m[x.clienta]) m[x.clienta]=x.fecha; }); return m; }
 function msjFiltradas(){
@@ -5259,34 +5269,49 @@ function msjFiltradas(){
     cls = cls.filter(c=>{ const u = um[c.id];
       return f.recibio==='hoy' ? u===h : f.recibio==='semana' ? (u && dias(u)<7)
         : f.recibio==='nohoy' ? u!==h : !(u && dias(u)<7); }); }
-  return cls.slice().sort((a,b)=> (msjTel(b)?1:0)-(msjTel(a)?1:0) || a.nombre.localeCompare(b.nombre));
+  const o = f.orden||'', um = o==='sinmsj' ? ultimosMensajes() : null;
+  return cls.slice().sort((a,b)=> (msjTel(b)?1:0)-(msjTel(a)?1:0) || (
+    o==='reciente' ? (ultimaCompra(b.id)||'').localeCompare(ultimaCompra(a.id)||'')
+    : o==='dormido' ? diasSinComprar(b.id)-diasSinComprar(a.id)
+    : o==='sinmsj' ? (um[a.id]||'').localeCompare(um[b.id]||'')
+    : 0) || a.nombre.localeCompare(b.nombre));
 }
 function mktMensajes(){
   if(MSJ.texto===null){ const p = Store.all('plantillas')[0]; MSJ.plantilla = p ? p.id : 'libre'; MSJ.texto = p ? p.texto : ''; }
   if(MSJ.f.compraEn===undefined) MSJ.f.compraEn = ESTADO.local!=='TODOS' ? ESTADO.local : '';
+  const vista = MSJ.vista==='historial' ? 'historial' : 'escribir';
   const lista = MSJ._lista = msjFiltradas();
-  if(MSJ.cola){ MSJ.sel = MSJ.cola[MSJ.idx]; }
+  if(MSJ.cola) MSJ.sel = MSJ.cola[MSJ.idx];
   else if(!MSJ.sel || !lista.some(c=>c.id===MSJ.sel)) MSJ.sel = (lista.find(c=>msjTel(c))||{}).id || '';
+  const pend = msjColaGuardada();
   return `
-  <div class="aviso" style="margin-bottom:14px"><span class="em">✆</span><div><b>Mensajes uno a uno, gratis.</b>
-    Elegís a quién, escribís el mensaje y se abre tu WhatsApp con todo listo: solo tocás «enviar».
-    Sirve con cualquier texto y no necesita aprobación de Meta.</div></div>
-  <div id="msj-zona">
-    <div class="msj-grid">
-      ${card('1 · ¿A quién le escribo?', msjFiltrosHTML() + `<div id="msj-cuenta">${msjCuentaHTML(lista)}</div>
-        <div class="msj-lista" id="msj-lista">${msjListaHTML(lista)}</div>`)}
-      ${card('2 · ¿Qué le digo?', msjEditorHTML())}
-      <div class="msj-prev">${card('3 · Así le llega', `<details class="plegable" open><summary>Ver u ocultar la vista previa</summary>
-        <div id="msj-prev" style="margin-top:8px">${msjPrevHTML()}</div></details>`)}</div>
-    </div>
-    <div class="msj-enviar" id="msj-enviar">${msjBarraHTML()}</div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-4px 0 14px">
+    ${Store.cfg('msjAvisoOculto') ? '' : `<div class="mini" style="flex:1;min-width:220px">✆ Uno a uno y gratis: se abre tu WhatsApp con
+      el mensaje listo y vos tocás «enviar». <a style="cursor:pointer;text-decoration:underline" onclick="Store.cfg('msjAvisoOculto',true); render()">Ocultar</a></div>`}
+    <div class="seg" style="margin-left:auto">
+      <button class="${vista==='escribir'?'on':''}" onclick="MSJ.vista='escribir'; render()">Escribir</button>
+      <button class="${vista==='historial'?'on':''}" onclick="MSJ.vista='historial'; render()">Historial</button></div>
   </div>
-  ${card('Mensajes de los últimos 30 días', `<div id="msj-hist">${msjHistorialHTML()}</div>`,
-    {clase:'mt', sub:'A quién se le escribió y quiénes compraron después'})}`;
+  ${vista==='historial'
+    ? card('Mensajes de los últimos 30 días', `<div id="msj-hist">${msjHistorialHTML()}</div>`, {sub:'A quién se le escribió y quiénes compraron después'})
+    : `${pend && !MSJ.cola ? `<div class="aviso al" style="margin-bottom:14px"><span class="em">↻</span><div style="flex:1">
+        Te quedaron <b>${pend.ids.length-pend.idx} de ${pend.ids.length}</b> de la lista que empezaste el ${dmy(pend.fecha)}.</div>
+        <button class="btn chico" onclick="msjRetomar()">Seguir</button>
+        <button class="btn chico sec" onclick="msjDescartarCola()">Descartar</button></div>` : ''}
+    <div id="msj-zona">
+      <div class="msj-grid">
+        ${card('1 · ¿A quién le escribo?', msjFiltrosHTML() + `<div id="msj-cuenta">${msjCuentaHTML(lista)}</div>
+          <div class="msj-lista" id="msj-lista">${msjListaHTML(lista)}</div>`)}
+        ${card('2 · ¿Qué le digo?', msjEditorHTML())}
+        <div class="msj-prev">${card('3 · Así le llega', `<details class="plegable solo-cel" open><summary>Ver u ocultar la vista previa</summary>
+          <div id="msj-prev" style="margin-top:6px">${msjPrevHTML()}</div></details>
+          <div id="msj-dato">${msjDatoHTML()}</div>`)}</div>
+      </div>
+      <div class="msj-enviar" id="msj-enviar">${msjBarraHTML()}</div>
+    </div>`}`;
 }
 function msjFiltrosHTML(){
   const f = MSJ.f, es = Store.all('etiquetas');
-  const otros = f.compra||f.talle||f.cumple||f.min||f.max||f.optin||f.recibio||(f.compraEn && f.compraEn!==(ESTADO.local!=='TODOS'?ESTADO.local:''));
   const sel = (id, val, ops, ph) => `<select onchange="MSJ.f.${id}=this.value; msjRefrescar()"><option value="">${ph}</option>${ops.map(o=>{
     const [v,l] = Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(val||'')===String(v)?'selected':''}>${esc(l)}</option>`;}).join('')}</select>`;
   return `
@@ -5296,13 +5321,13 @@ function msjFiltrosHTML(){
       value="${esc(f.q||'')}" oninput="MSJ.f.q=this.value; msjRefrescar()" style="width:100%"></div>
     ${es.length?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
       <span class="etiqueta">Etiquetas</span>
-      <div class="seg" style="transform:scale(.92);transform-origin:left">
+      ${f.etqs.length>=2?`<div class="seg" style="transform:scale(.9);transform-origin:left">
         <button class="${f.etqModo!=='todas'?'on':''}" onclick="MSJ.f.etqModo='alguna'; msjRefrescar(true)">Tiene alguna</button>
-        <button class="${f.etqModo==='todas'?'on':''}" onclick="MSJ.f.etqModo='todas'; msjRefrescar(true)">Tiene todas</button></div></div>
+        <button class="${f.etqModo==='todas'?'on':''}" onclick="MSJ.f.etqModo='todas'; msjRefrescar(true)">Tiene todas</button></div>`:''}</div>
     <div class="chips" id="msj-etqs" style="margin-bottom:10px">${es.map(e=>{ const on = f.etqs.includes(e.id), col = e.color||'#8C7E70';
       return `<button type="button" class="etq-chip ${on?'':'apagada'}" style="background:${col}1F;color:${col};border-color:${col}55"
         onclick="msjEtq('${e.id}')">${on?'✓ ':''}${esc(e.nombre)}</button>`;}).join('')}</div>`:''}
-    <details class="plegable" ${otros?'open':''}><summary>Más filtros</summary>
+    <details class="plegable" ${MSJ.masAbierto?'open':''} ontoggle="MSJ.masAbierto=this.open"><summary>Más filtros</summary>
       <div class="grid g2" style="gap:8px;margin-top:8px">
         ${sel('compra', f.compra, [['u30','Compró en los últimos 30 días'],['m30','Hace más de 30 días que no compra'],
           ['m60','Hace más de 60 días'],['m90','Hace más de 90 días'],['nunca','Nunca compró']], 'Última compra: cualquiera')}
@@ -5311,45 +5336,75 @@ function msjFiltrosHTML(){
         ${sel('optin', f.optin, [['si','Dio su consentimiento'],['no','No dio consentimiento']], 'Consentimiento: todos')}
         ${sel('recibio', f.recibio, [['nohoy','No recibió mensaje hoy'],['nosemana','No recibió esta semana'],
           ['hoy','Ya recibió hoy'],['semana','Ya recibió esta semana']], 'Mensajes: todos')}
-        <label class="casilla" style="margin:0"><input type="checkbox" ${f.cumple?'checked':''} onchange="MSJ.f.cumple=this.checked; msjRefrescar()"> Cumple años este mes</label>
+        <label class="casilla" style="margin:0"><input type="checkbox" ${f.cumple?'checked':''} onchange="MSJ.f.cumple=this.checked; msjRefrescar(true)"> Cumple años este mes</label>
         <label class="cpo" style="margin:0"><span>Gastó desde $</span><input type="number" min="0" value="${esc(f.min||'')}" onchange="MSJ.f.min=this.value; msjRefrescar()"></label>
         <label class="cpo" style="margin:0"><span>Hasta $</span><input type="number" min="0" value="${esc(f.max||'')}" onchange="MSJ.f.max=this.value; msjRefrescar()"></label>
       </div></details>`;
 }
+/* los filtros que están puestos, a la vista y con su ✕ */
+function msjChipsActivos(){
+  const f = MSJ.f, out = [];
+  const chip = (txt, quitar) => `<span class="chip linea">${esc(txt)} <button class="chip-x" title="Sacar este filtro" onclick="${quitar}; msjRefrescar(true)">✕</button></span>`;
+  f.etqs.forEach(id=>{ const e = etqObj(id); if(e) out.push(chipEtq(e, `<button title="Sacar este filtro" onclick="msjEtq('${id}')">✕</button>`)); });
+  const compra = {u30:'Compró en 30 días', m30:'+30 días sin comprar', m60:'+60 días sin comprar', m90:'+90 días sin comprar', nunca:'Nunca compró'};
+  if(f.q) out.push(chip('Busca «'+f.q+'»', "MSJ.f.q=''"));
+  if(f.compra) out.push(chip(compra[f.compra]||f.compra, "MSJ.f.compra=''"));
+  if(f.talle) out.push(chip('Talle '+f.talle, "MSJ.f.talle=''"));
+  if(f.compraEn) out.push(chip('Compró en '+(f.compraEn==='tienda' ? tienda().nombre : localNom(f.compraEn)), "MSJ.f.compraEn=''"));
+  if(f.optin) out.push(chip(f.optin==='si'?'Con consentimiento':'Sin consentimiento', "MSJ.f.optin=''"));
+  const rec = {nohoy:'No recibió hoy', nosemana:'No recibió esta semana', hoy:'Recibió hoy', semana:'Recibió esta semana'};
+  if(f.recibio) out.push(chip(rec[f.recibio], "MSJ.f.recibio=''"));
+  if(f.cumple) out.push(chip('Cumple este mes', 'MSJ.f.cumple=false'));
+  if(f.min) out.push(chip('Gastó desde '+money(+f.min), "MSJ.f.min=''"));
+  if(f.max) out.push(chip('Gastó hasta '+money(+f.max), "MSJ.f.max=''"));
+  return out.join('');
+}
 function msjCuentaHTML(lista){
-  const conTel = lista.filter(c=>msjTel(c)).length;
-  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">
+  const conTel = lista.filter(c=>msjTel(c)).length, chips = msjChipsActivos(), o = MSJ.f.orden||'';
+  return `${chips?`<div class="chips" style="margin-top:2px">${chips}</div>`:''}
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px">
     <b>${lista.length} cliente${lista.length===1?'':'s'}</b>${conTel<lista.length?`<span class="mini">· ${lista.length-conTel} sin teléfono</span>`:''}
-    <button class="btn chico sec" style="margin-left:auto" onclick="msjLimpiar()">Limpiar filtros</button></div>`;
+    <select class="cell-in" style="margin-left:auto;min-width:0;font-size:12.5px" title="Ordenar" onchange="MSJ.f.orden=this.value; msjRefrescar()">
+      ${[['','Por nombre'],['sinmsj','Hace más que no le escribo'],['dormido','Hace más que no compra'],['reciente','Compró hace poco']]
+        .map(x=>`<option value="${x[0]}" ${o===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+    ${chips||MSJ.ids?'<button class="btn chico sec" onclick="msjLimpiar()">Limpiar</button>':''}</div>`;
 }
 function msjListaHTML(lista){
   if(!lista.length) return vacio('Nadie con esos filtros');
-  const um = ultimosMensajes();
-  return lista.slice(0,150).map(c=>{ const tel = msjTel(c), on = c.id===MSJ.sel, u = um[c.id], d = diasSinComprar(c.id);
+  const um = ultimosMensajes(), pausa = msjPausa();
+  return lista.slice(0,150).map(c=>{ const tel = msjTel(c), on = c.id===MSJ.sel, u = um[c.id], d = diasSinComprar(c.id), es = etqsDe(c);
     return `<div class="msj-fila ${on?'sel':''} ${tel?'':'off'}" ${tel?`onclick="msjElegir('${c.id}')"`:'title="No tiene teléfono cargado"'} data-c="${c.id}">
-      <span class="avatar ${colorTexto(c.nombre.length)}" style="width:32px;height:32px;font-size:13px">${inicial(c.nombre)}</span>
-      <div class="txt"><b>${esc(c.nombre)}</b>
-        <span>${tel? esc(c.tel) : 'sin teléfono'} · ${d===9999?'nunca compró':'compró hace '+d+' días'}${c.optin?'':' · <span style="color:var(--mal)">sin consentimiento</span>'}</span>
-        ${etqsDe(c).length?`<div class="chips" style="margin-top:4px">${etqsDe(c).slice(0,3).map(e=>chipEtq(e)).join('')}</div>`:''}</div>
-      ${u?`<span class="chip ok" title="Último mensaje">✓ ${dm(u)}</span>`:''}</div>`;}).join('')
+      <span class="avatar ${colorTexto(c.nombre.length)}" style="width:28px;height:28px;font-size:12px">${inicial(c.nombre)}</span>
+      <div class="txt"><b>${esc(c.nombre)} <span class="tel">· ${tel? esc(c.tel) : 'sin teléfono'}</span></b>
+        <span>${d===9999?'nunca compró':'hace '+d+' días'}${es.length?' · '+es.slice(0,2).map(e=>`<span style="color:${e.color||'#8C7E70'};font-weight:600">${esc(e.nombre)}</span>`).join(' · '):''}${c.optin?'':' · <span style="color:var(--mal)">sin consentimiento</span>'}</span></div>
+      ${u?`<span class="chip ${dias(u)<pausa?'al':'ok'}" title="Último mensaje">✓ ${dm(u)}</span>`:''}</div>`;}).join('')
     + (lista.length>150?`<div class="mini" style="padding:6px">y ${lista.length-150} más: usá el buscador o los filtros</div>`:'');
 }
 function msjEditorHTML(){
   const pls = Store.all('plantillas');
   return `
-    <label class="cpo"><span>Plantilla</span><select id="msj-pl" onchange="msjPlantilla(this.value)">
-      <option value="libre" ${MSJ.plantilla==='libre'?'selected':''}>✎ Mensaje libre</option>
-      ${pls.map(p=>`<option value="${p.id}" ${p.id===MSJ.plantilla?'selected':''}>${esc(p.nombre)}</option>`).join('')}</select></label>
-    <label class="cpo"><span>Mensaje (los datos entre llaves se completan solos)</span>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <label class="cpo" style="flex:1;margin-bottom:0"><span>Plantilla</span><select id="msj-pl" onchange="msjPlantilla(this.value)">
+        <option value="libre" ${MSJ.plantilla==='libre'?'selected':''}>✎ Mensaje libre</option>
+        ${pls.map(p=>`<option value="${p.id}" ${p.id===MSJ.plantilla?'selected':''}>${esc(p.nombre)}</option>`).join('')}</select></label>
+      <button class="ico-btn" title="Guardar como plantilla" style="margin-bottom:3px" onclick="msjGuardarPlantilla()">💾</button>
+    </div>
+    <label class="cpo" style="margin-top:12px"><span>Mensaje (los datos entre llaves se completan solos)</span>
       <textarea id="msj-texto" style="min-height:170px" oninput="MSJ.texto=this.value; msjVivo()">${esc(MSJ.texto)}</textarea></label>
     <div class="chips" id="msj-vars" style="margin:-4px 0 10px">${msjVarsHTML()}</div>
     <div id="msj-faltan">${msjFaltanHTML()}</div>
-    <div class="grid g2" style="gap:12px">
-      <label class="cpo"><span>Cupón / beneficio</span><input value="${esc(MSJ.cupon)}" placeholder="10% de descuento" oninput="MSJ.cupon=this.value; msjVivo()"></label>
-      <label class="cpo"><span>Colección</span><input list="dl-msj-col" value="${esc(MSJ.coleccion)}" placeholder="Primavera 26…" oninput="MSJ.coleccion=this.value; msjVivo()" onchange="MSJ.coleccion=this.value; msjVivo()">
-        <datalist id="dl-msj-col">${cols().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
-    </div>
-    <button class="btn sec chico" onclick="msjGuardarPlantilla()">Guardar como plantilla</button>`;
+    <div id="msj-campos">${msjCamposHTML()}</div>`;
+}
+/* cupón y colección aparecen solo si el mensaje los usa */
+function msjCamposHTML(){
+  const t = MSJ.texto||'', cup = /\{cupon\}/.test(t) || MSJ.cupon, col = /\{coleccion\}/.test(t) || MSJ.coleccion;
+  MSJ._campos = (cup?'c':'')+(col?'o':'');
+  if(!cup && !col) return '';
+  return `<div class="grid g2" style="gap:12px">
+    ${cup?`<label class="cpo"><span>Cupón / beneficio</span><input value="${esc(MSJ.cupon)}" placeholder="10% de descuento" oninput="MSJ.cupon=this.value; msjVivo()"></label>`:''}
+    ${col?`<label class="cpo"><span>Colección</span><input list="dl-msj-col" value="${esc(MSJ.coleccion)}" placeholder="Primavera 26"
+      oninput="MSJ.coleccion=this.value; msjVivo()" onchange="MSJ.coleccion=this.value; msjVivo()">
+      <datalist id="dl-msj-col">${cols().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>`:''}</div>`;
 }
 function msjEstado(){ const c = clienta(MSJ.sel); return {c, r: rellenar(MSJ.texto, c, {cupon:MSJ.cupon, coleccion:MSJ.coleccion})}; }
 function msjVarsHTML(){
@@ -5366,24 +5421,36 @@ function msjPrevHTML(){
   const {c, r} = msjEstado();
   return telefono(c ? c.nombre : 'Elegí un cliente', r.texto || ' ');
 }
+/* debajo del celular: con quién estás hablando */
+function msjDatoHTML(){
+  const c = clienta(MSJ.sel); if(!c) return '';
+  const d = diasSinComprar(c.id), u = ultimosMensajes()[c.id], pausa = msjPausa(), talle = c.talle || c.talleNum;
+  return `<div style="margin-top:12px;border-top:1px solid var(--linea);padding-top:10px">
+    <div class="mini">${talle?'Talle '+esc(talle)+' · ':''}${d===9999?'Nunca compró':'Compró hace '+d+' días'} · gastó ${money(valorClienta(c.id))}
+      ${c.optin?'':' · <span style="color:var(--mal)">no dio consentimiento</span>'}</div>
+    <div class="chips" style="margin-top:6px">${etqsDe(c).map(e=>chipEtq(e)).join('')}
+      ${u?`<span class="chip ${dias(u)<pausa?'al':'linea'}">Último mensaje: ${dmy(u)}${dias(u)<pausa?' · hace '+dias(u)+' días':''}</span>`:''}</div></div>`;
+}
 function msjBarraHTML(){
-  const {c} = msjEstado(), tel = msjTel(c);
+  const {c} = msjEstado(), tel = msjTel(c), compu = window.innerWidth>=900;
   if(MSJ.cola){
-    const n = MSJ.cola.length, i = MSJ.idx;
-    return `<div class="prog"><b style="white-space:nowrap">${i+1} de ${n}</b>
-        <div class="barra oliva" style="height:9px"><i style="width:${Math.round(i/n*100)}%"></i></div>
-        <button class="btn chico sec" onclick="msjListaFin()">Terminar</button></div>
-      <span class="mini" style="flex:1 1 100%">Ahora: <b>${esc(c?c.nombre:'—')}</b>${c&&!c.optin?' · <span style="color:var(--mal)">no dio consentimiento</span>':''}</span>
+    const n = MSJ.cola.length, i = MSJ.idx, auto = Store.cfg('msjAuto')!==false;
+    return `<div class="msj-quien"><div><b>${esc(c?c.nombre:'—')}</b> · ${i+1} de ${n}${c&&!c.optin?' · <span style="color:var(--mal)">sin consentimiento</span>':''}</div>
+        <div class="barra oliva" style="height:6px;margin-top:5px"><i style="width:${Math.round(i/n*100)}%"></i></div>
+        <label class="mini" style="display:flex;gap:6px;align-items:center;margin-top:5px;cursor:pointer"><input type="checkbox" ${auto?'checked':''}
+          onchange="Store.cfg('msjAuto', this.checked)"> Pasar sola a la siguiente al volver de WhatsApp${compu?' · Enter: enviar / siguiente':''}</label></div>
+      <button class="btn sec chico" onclick="msjAnterior()" ${i?'':'disabled'}>← Anterior</button>
+      <button class="btn sec chico" onclick="msjSiguiente(true)">Saltear</button>
+      <button class="btn sec chico" onclick="msjListaFin()">Terminar</button>
       ${MSJ.paso==='enviado'
         ? `<button class="btn" onclick="msjSiguiente()">Enviado ✓ · Siguiente →</button>`
-        : `<button class="btn wa" onclick="msjEnviar()">Enviar por WhatsApp →</button>`}
-      <button class="btn sec" onclick="msjSiguiente(true)">Saltear</button>`;
+        : `<button class="btn wa" onclick="msjEnviar()">Enviar por WhatsApp →</button>`}`;
   }
   const conTel = (MSJ._lista||[]).filter(x=>msjTel(x)).length;
-  return `<button class="btn wa" onclick="msjEnviar()" ${tel?'':'disabled'}>Enviar por WhatsApp →</button>
-    <span class="mini">${c ? 'a <b>'+esc(c.nombre)+'</b>' : 'Elegí a quién'}</span>
-    <button class="btn sec" onclick="msjListaIniciar()" ${conTel?'':'disabled'}>Enviar a la lista (${conTel})</button>
-    <button class="btn sec" onclick="msjProbar()">Probármelo a mí</button>`;
+  return `<div class="msj-quien">${c ? 'a <b>'+esc(c.nombre)+'</b>' : 'Elegí a quién le escribís'}</div>
+    <button class="btn sec chico" onclick="msjProbar()">Probármelo a mí</button>
+    <button class="btn sec chico" onclick="msjListaIniciar()" ${conTel?'':'disabled'}>Enviar a la lista (${conTel})</button>
+    <button class="btn wa" onclick="msjEnviar()" ${tel?'':'disabled'}>Enviar por WhatsApp →</button>`;
 }
 function msjRefrescar(etqs){
   const lista = MSJ._lista = msjFiltradas();
@@ -5392,11 +5459,13 @@ function msjRefrescar(etqs){
   repintar('msj-lista', msjListaHTML(lista)); repintar('msj-cuenta', msjCuentaHTML(lista)); msjVivo();
 }
 function msjVivo(){
-  repintar('msj-prev', msjPrevHTML()); repintar('msj-faltan', msjFaltanHTML());
-  repintar('msj-vars', msjVarsHTML()); repintar('msj-enviar', msjBarraHTML());
+  repintar('msj-prev', msjPrevHTML()); repintar('msj-faltan', msjFaltanHTML()); repintar('msj-vars', msjVarsHTML());
+  repintar('msj-dato', msjDatoHTML()); repintar('msj-enviar', msjBarraHTML());
+  const t = MSJ.texto||'', clave = ((/\{cupon\}/.test(t)||MSJ.cupon)?'c':'')+((/\{coleccion\}/.test(t)||MSJ.coleccion)?'o':'');
+  if(clave!==MSJ._campos) repintar('msj-campos', msjCamposHTML());   // solo si aparece o desaparece un campo
 }
 function msjEtq(id){ const f = MSJ.f; f.etqs = f.etqs.includes(id) ? f.etqs.filter(x=>x!==id) : f.etqs.concat(id); msjRefrescar(true); }
-function msjLimpiar(){ MSJ.f = {etqs:[], etqModo:'alguna', compraEn:''}; MSJ.ids = null; render(); }
+function msjLimpiar(){ MSJ.f = {etqs:[], etqModo:'alguna', compraEn:'', orden:MSJ.f.orden||''}; MSJ.ids = null; render(); }
 function msjElegir(id){
   if(MSJ.cola){ toast('Estás recorriendo la lista: usá «Siguiente» o «Terminar»'); return; }
   MSJ.sel = id;
@@ -5438,34 +5507,90 @@ function msjEnviar(){
   if(!msjTel(c)){ toast(c.nombre+' no tiene teléfono cargado'); return; }
   if(!r.texto.trim()){ toast('El mensaje está vacío'); return; }
   if(r.faltan.length && !confirm('Faltan datos: '+r.faltan.map(k=>'{'+k+'}').join(', ')+'. En el mensaje quedan vacíos.\n\n¿Mandarlo igual?')) return;
+  if(MSJ.cola){ MSJ.paso = 'enviado'; MSJ.esperando = true; MSJ.fuera = false; }
   WhatsApp.abrir(c.tel, r.texto, c.pais);
   msjRegistrar(c, r.texto);
-  if(MSJ.cola) MSJ.paso = 'enviado'; else toast('Se abrió WhatsApp · quedó anotado');
-  repintar('msj-lista', msjListaHTML(MSJ._lista)); repintar('msj-enviar', msjBarraHTML()); repintar('msj-hist', msjHistorialHTML());
+  if(!MSJ.cola) toast('Se abrió WhatsApp · quedó anotado');
+  msjGuardarCola();
+  repintar('msj-lista', msjListaHTML(MSJ._lista)); repintar('msj-enviar', msjBarraHTML()); repintar('msj-dato', msjDatoHTML());
 }
 function msjListaIniciar(){
-  const ids = (MSJ._lista||[]).filter(c=>msjTel(c)).map(c=>c.id);
+  let ids = (MSJ._lista||[]).filter(c=>msjTel(c)).map(c=>c.id);
   if(!ids.length){ toast('Nadie de la lista tiene teléfono'); return; }
+  const pausa = msjPausa(), um = ultimosMensajes();
+  const recientes = ids.filter(id=>um[id] && dias(um[id])<pausa);
+  let aviso = '';
+  if(recientes.length===ids.length){
+    if(!confirm('Todos recibieron un mensaje hace menos de '+pausa+' días.\n\n¿Escribirles igual?')) return;
+  } else if(recientes.length){
+    ids = ids.filter(id=>!recientes.includes(id));
+    aviso = 'Se saltearon '+recientes.length+' que recibieron un mensaje hace menos de '+pausa+' días';
+  }
   const sinOk = ids.filter(id=>!(clienta(id)||{}).optin).length;
   if(sinOk && !confirm(sinOk+' de '+ids.length+' no dieron su consentimiento para recibir mensajes.\n\n¿Recorrer la lista igual?')) return;
-  MSJ.cola = ids; MSJ.idx = 0; MSJ.paso = ''; MSJ.sel = ids[0];
-  msjRefrescar(); const z = $('#msj-enviar'); if(z) z.scrollIntoView({behavior:'smooth', block:'nearest'});
+  MSJ.cola = ids; MSJ.idx = 0; MSJ.paso = ''; MSJ.sel = ids[0]; MSJ.esperando = false;
+  msjGuardarCola();
+  render();
+  toast(aviso || 'Lista de '+ids.length+': tocá «Enviar por WhatsApp»');
+  const z = $('#msj-enviar'); if(z) z.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 function msjSiguiente(saltear){
   if(!MSJ.cola) return;
-  MSJ.idx++; MSJ.paso = '';
+  MSJ.idx++; MSJ.paso = ''; MSJ.esperando = false;
   if(MSJ.idx >= MSJ.cola.length){ msjListaFin(); return; }
   MSJ.sel = MSJ.cola[MSJ.idx];
+  msjGuardarCola(); msjMarcarFila(); msjVivo();
+}
+function msjAnterior(){
+  if(!MSJ.cola || !MSJ.idx) return;
+  MSJ.idx--; MSJ.paso = ''; MSJ.esperando = false; MSJ.sel = MSJ.cola[MSJ.idx];
+  msjGuardarCola(); msjMarcarFila(); msjVivo();
+}
+function msjMarcarFila(){
   $$('#msj-lista .msj-fila').forEach(x=>x.classList.toggle('sel', x.dataset.c===MSJ.sel));
-  msjVivo();
   const f = document.querySelector('#msj-lista .msj-fila.sel'); if(f) f.scrollIntoView({block:'nearest'});
 }
+/* la lista a medio recorrer queda guardada para seguir después */
+function msjGuardarCola(){
+  Store.cfg('msjCola', MSJ.cola ? {ids:MSJ.cola, idx:MSJ.idx + (MSJ.paso==='enviado'?1:0), fecha:hoyISO(), texto:MSJ.texto,
+    plantilla:MSJ.plantilla, cupon:MSJ.cupon, coleccion:MSJ.coleccion, tienda:ESTADO.tienda} : null);
+}
+function msjColaGuardada(){
+  const q = Store.cfg('msjCola');
+  return q && q.tienda===ESTADO.tienda && Array.isArray(q.ids) && q.idx < q.ids.length ? q : null;
+}
+function msjRetomar(){
+  const q = msjColaGuardada(); if(!q) return;
+  const ids = q.ids.filter(id=>clienta(id)); const idx = Math.min(q.idx, ids.length-1);
+  if(idx<0){ msjDescartarCola(); return; }
+  Object.assign(MSJ, {cola:ids, idx, paso:'', esperando:false, texto:q.texto, plantilla:q.plantilla, cupon:q.cupon||'', coleccion:q.coleccion||'', sel:ids[idx]});
+  render(); toast('Seguís con '+clienteNom(ids[idx]));
+}
+function msjDescartarCola(){ Store.cfg('msjCola', null); render(); }
 function msjListaFin(){
   const n = MSJ.cola ? MSJ.cola.length : 0;
   const hechos = Store.all('mensajes').filter(m=>m.fecha===hoyISO() && (MSJ.cola||[]).includes(m.clienta)).length;
-  MSJ.cola = null; MSJ.idx = 0; MSJ.paso = '';
-  toast('Lista terminada · '+hechos+' de '+n+' enviados hoy'); render();
+  MSJ.cola = null; MSJ.idx = 0; MSJ.paso = ''; MSJ.esperando = false;
+  Store.cfg('msjCola', null);
+  toast('Lista terminada · '+hechos+' de '+n+' con mensaje hoy'); render();
 }
+/* Al volver de WhatsApp (la pestaña o la ventana recupera el foco) pasa sola a la siguiente */
+function msjVolvio(){
+  if(!MSJ.cola || !MSJ.esperando || !MSJ.fuera) return;
+  MSJ.esperando = false; MSJ.fuera = false;
+  if(Store.cfg('msjAuto')===false || MSJ.paso!=='enviado') return;
+  setTimeout(()=>{ if(MSJ.cola && MSJ.paso==='enviado'){ msjSiguiente(); if(MSJ.cola) toast('Siguiente: '+clienteNom(MSJ.sel)); } }, 400);
+}
+window.addEventListener('blur', ()=>{ if(MSJ.esperando) MSJ.fuera = true; });
+window.addEventListener('focus', msjVolvio);
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ if(MSJ.esperando) MSJ.fuera = true; } else msjVolvio(); });
+/* en la computadora: Enter envía y, después, pasa a la siguiente */
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter' || !MSJ.cola || ESTADO.vista!=='marketing' || $('#modales').innerHTML) return;
+  if(e.target.closest && e.target.closest('textarea,input,select,button')) return;
+  e.preventDefault();
+  if(MSJ.paso==='enviado') msjSiguiente(); else msjEnviar();
+});
 function msjProbar(){
   const tel = Store.cfg('telDuena');
   const {r} = msjEstado();
@@ -5475,7 +5600,7 @@ function msjProbar(){
 }
 function msjConElegidos(){
   if(!SEL.length) return;
-  MSJ.ids = SEL.slice(); MSJ.f = {etqs:[], etqModo:'alguna', compraEn:''}; MSJ.cola = null; MSJ.sel = '';
+  MSJ.ids = SEL.slice(); MSJ.f = {etqs:[], etqModo:'alguna', compraEn:''}; MSJ.cola = null; MSJ.sel = ''; MSJ.vista = 'escribir';
   ir('marketing','mensajes'); window.scrollTo({top:0});
 }
 /* historial: los últimos 30 días y quiénes compraron después */
