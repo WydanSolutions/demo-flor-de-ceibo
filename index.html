@@ -5339,7 +5339,7 @@ function msjEditorHTML(){
   return `
     <label class="cpo"><span>Plantilla</span><select id="msj-pl" onchange="msjPlantilla(this.value)">
       <option value="libre" ${MSJ.plantilla==='libre'?'selected':''}>✎ Mensaje libre</option>
-      ${pls.map(p=>`<option value="${p.id}" ${p.id===MSJ.plantilla?'selected':''}>${esc(p.nombre)}${p.meta==='Aprobada'?' · aprobada por Meta':''}</option>`).join('')}</select></label>
+      ${pls.map(p=>`<option value="${p.id}" ${p.id===MSJ.plantilla?'selected':''}>${esc(p.nombre)}</option>`).join('')}</select></label>
     <label class="cpo"><span>Mensaje (los datos entre llaves se completan solos)</span>
       <textarea id="msj-texto" style="min-height:170px" oninput="MSJ.texto=this.value; msjVivo()">${esc(MSJ.texto)}</textarea></label>
     <div class="chips" id="msj-vars" style="margin:-4px 0 10px">${msjVarsHTML()}</div>
