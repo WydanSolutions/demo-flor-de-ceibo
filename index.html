@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="es-UY">
 <head>
+<script>window.FORZAR_DEMO = true;</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light only">
 <title>Flor de Ceibo — Gestión</title>
-<meta name="description" content="Sistema de gestión comercial de Flor de Ceibo by Vale Campos. Demostración de Wydan Solutions.">
+<meta name="description" content="Demostración del sistema de gestión de Flor de Ceibo y Tu Estilo Vale, hecho por Wydan Solutions.">
+<meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -557,11 +559,37 @@ details.plegable[open] > summary::before{content:'▾ ';}
   .seg{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
   .seg button{flex:0 0 auto}
 }
+/* ==================== INGRESO REAL ==================== */
+#login{min-height:100dvh;display:grid;grid-template-columns:1.05fr .95fr}
+#login .ing-marca .logo{width:min(220px,40vw);height:auto;position:relative;z-index:1}
+.login-logos{display:flex;gap:26px;align-items:center;justify-content:center;flex-wrap:wrap;position:relative;z-index:1}
+.login-form{max-width:420px}
+@media (max-width:860px){ #login{grid-template-columns:1fr} #login .ing-marca .logo{width:min(150px,38vw)} }
+
 </style>
 </head>
 <body>
 
 <!-- ══════════ PANTALLA 1: ¿A QUÉ TIENDA ENTRÁS? ══════════ -->
+<!-- ══════════ INGRESO REAL: correo y contraseña (no se usa en la demostración) ══════════ -->
+<div id="login" class="oculto">
+  <div class="ing-marca"><div id="login-logo" class="login-logos"></div>
+    <div class="ing-lema">Raíces uruguayas · Tu estilo, todos los días</div></div>
+  <div class="ing-panel">
+    <div class="filo"></div>
+    <h1>Entrá a tu <em>tienda</em>.</h1>
+    <div class="p">Con tu correo y tu contraseña. Si es la primera vez, tocá «¿Olvidaste tu contraseña?» y te llega un mail para elegirla.</div>
+    <form class="login-form" onsubmit="event.preventDefault(); loginEntrar()">
+      <label class="cpo"><span>Correo</span><input id="login-correo" type="email" autocomplete="username" placeholder="tu@correo.com"></label>
+      <label class="cpo"><span>Contraseña</span><input id="login-clave" type="password" autocomplete="current-password"></label>
+      <div id="login-msg" class="aviso al" style="display:none;margin-bottom:12px"></div>
+      <button id="login-btn" class="btn grande" type="submit" style="width:100%">Entrar</button>
+      <button type="button" class="btn sec chico" style="margin-top:12px" onclick="loginOlvide()">¿Olvidaste tu contraseña?</button>
+    </form>
+    <div class="ing-pie"><span>Desarrollado por <b style="color:var(--tinta-2);letter-spacing:.1em">WYDAN SOLUTIONS</b></span></div>
+  </div>
+</div>
+
 <div id="elegir">
   <div class="filo"></div>
   <h1>¿A qué <em>tienda</em> entrás?</h1>
@@ -622,8 +650,245 @@ details.plegable[open] > summary::before{content:'▾ ';}
      puesto acá adentro para que la página siga siendo UN SOLO archivo. Para cambiarlo se
      reemplaza esta línea por el logo nuevo. -->
 <script>const LOGO_TEV = "data:image/png;base64,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";</script>
+<script>/* ── js/firebase-config.js ── */
+/*
+ * Conexión con Firebase y modo de funcionamiento. Es el PRIMER script de la página.
+ *
+ * - Estos datos NO son secretos: identifican al proyecto. La protección real está en firestore.rules.
+ * - Tres modos, según desde dónde se abre la página:
+ *     MODO_DEMO  → demostración: datos de ejemplo en el navegador, sin nube. Lo prenden el demo público
+ *                  (herramientas/empaquetar.js pone FORZAR_DEMO) o la dirección con ?demo=1.
+ *     MODO_LOCAL → en esta computadora (localhost): trabaja contra los EMULADORES de Firebase.
+ *                  Nunca toca los datos reales.
+ *     ninguno    → la página real: Firestore y Firebase Auth del proyecto real (FIREBASE_CONFIG).
+ */
+const FIREBASE_CONFIG = { projectId: 'demo' };   // demostración: sin nube
 
-<script>
+/* Soporte de Wydan: entra siempre, con permisos de dueña (para dar de alta a la dueña y dar soporte).
+   ⚠ Tiene que ser el mismo correo que en firestore.rules. */
+const CORREO_SOPORTE = 'soporte@ejemplo.com';
+
+const MODO_DEMO  = !!window.FORZAR_DEMO || /[?&]demo=1(?![0-9])/.test(location.search);
+const MODO_LOCAL = !MODO_DEMO && ['localhost', '127.0.0.1'].indexOf(location.hostname) >= 0;
+
+var fbAuth = null, fbDb = null;
+function fbInit(){
+  if (MODO_DEMO || fbDb) return;
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth(); fbAuth.languageCode = 'es';
+  fbDb = firebase.firestore();
+  /* undefined no viaja (Firestore lo rechazaría): los campos sin valor simplemente no se guardan */
+  fbDb.settings({ ignoreUndefinedProperties: true, merge: true });
+  if (MODO_LOCAL) {
+    fbAuth.useEmulator('http://127.0.0.1:9099', { disableWarnings: true });
+    fbDb.useEmulator('127.0.0.1', 8080);
+  } else {
+    /* guarda una copia en el navegador: al recargar no vuelve a bajar todo (menos lecturas del plan gratis) */
+    fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+  }
+}
+
+</script>
+<script>/* ── js/sync.js ── */
+/*
+ * SINCRONIZACION FIRESTORE. (Copiado del de Mecánica Machado, que revisó Álvaro; se agregó `consulta`.)
+ *
+ * Este componente maneja solo la parte tecnica de persistencia y sincronizacion:
+ * listeners, dirty/saving, debounce, retries, batches y huellas sincronizadas.
+ *
+ * No conoce reglas de negocio ni estructura de entidades: todo eso entra por callbacks.
+ */
+
+const SyncManager={
+  _opts:null,
+  _synced:new Map(),
+  _timer:null,
+  _retryTimer:null,
+  _saving:false,
+  _dirty:false,
+  _rev:0,
+  _inflight:null,
+  _unsubs:[],
+
+  configure(opts){ this._opts=opts||{}; },
+  revision(){ return this._rev||0; },
+  nextRevision(){ return (this._rev||0)+1; },
+
+  _fp(v){
+    const f=this._opts&&this._opts.fingerprint;
+    return f?f(v):JSON.stringify(v===undefined?null:v);
+  },
+  _esDocSoloTransaccional(path){
+    const fn=this._opts&&this._opts.isDocSoloTransaccional;
+    return !!(fn&&fn(path));
+  },
+
+  _programarFlush(ms){
+    clearTimeout(this._timer);
+    this._timer=setTimeout(()=>{ this._timer=null; this.flush(); },ms);
+  },
+  _programarReintento(){
+    if(this._retryTimer) return;
+    this._retryTimer=setTimeout(()=>{
+      this._retryTimer=null;
+      this.flush();
+    },5000);
+  },
+
+  connect(){ /* opts.consulta(col): la consulta a escuchar, o null para no escuchar esa colección (sin permiso) */
+    this.disconnect();
+    const o=this._opts||{};
+    /* cada colección se escucha con su consulta: entera, filtrada (las ventas de una vendedora)
+       o no se escucha (no tiene permiso: las reglas la rechazarían) */
+    const cols=(o.cols||[]).map(col=>[col, o.consulta?o.consulta(col):fbDb.collection(col)]).filter(x=>x[1]);
+    return new Promise((resolve,reject)=>{
+      const pendientes=new Set(cols.map(x=>x[0]));
+      if(!pendientes.size){ if(o.onInitialLoad) o.onInitialLoad(); resolve(); return; }
+      cols.forEach(([col,consulta])=>{
+        const un=consulta.onSnapshot(snap=>{
+          let cambio=false;
+          snap.docChanges().forEach(ch=>{
+            if(ch.doc.metadata.hasPendingWrites) return;
+            const p=col+'/'+ch.doc.id;
+            if(this._esDocSoloTransaccional(p)) return;
+
+            if(ch.type==='removed'){
+              this._synced.delete(p);
+              const c=o.applyRemoteDelete?o.applyRemoteDelete(col,ch.doc.id):false;
+              cambio=!!c||cambio;
+              return;
+            }
+
+            const doc=ch.doc.data();
+            const s=this._fp(doc);
+            this._synced.set(p,s);
+            const local=o.getDoc?o.getDoc(p):null;
+            if(this._fp(local)===s) return;
+
+            if(o.applyRemotePut) o.applyRemotePut(col,ch.doc.id,doc);
+            cambio=true;
+          });
+
+          if(pendientes.has(col)){
+            pendientes.delete(col);
+            if(!pendientes.size){
+              if(o.onInitialLoad) o.onInitialLoad();
+              resolve();
+            }
+          }else if(cambio){
+            if(o.onRemoteChange) o.onRemoteChange();
+          }
+        }, err=>{
+          console.error('Firestore',col,err);
+          const inicialPendiente=pendientes.size>0;
+          if(o.onSyncError) o.onSyncError(err,inicialPendiente);
+          if(inicialPendiente) reject(err);
+        });
+        this._unsubs.push(un);
+      });
+    });
+  },
+
+  disconnect(){
+    this._unsubs.forEach(u=>{ try{ u(); }catch(e){} });
+    this._unsubs=[];
+    this._synced.clear();
+    clearTimeout(this._timer); this._timer=null;
+    clearTimeout(this._retryTimer); this._retryTimer=null;
+    this._saving=false;
+    this._dirty=false;
+    this._inflight=null;
+    this._rev=0;
+  },
+
+  markDirty(){
+    this._dirty=true;
+    this._rev++;
+    clearTimeout(this._retryTimer); this._retryTimer=null;
+    if(this._saving) return;
+    this._programarFlush(300);
+  },
+  save(){ this.markDirty(); },
+
+  async flush(){
+    if(!fbDb) return true;
+    const o=this._opts||{};
+
+    clearTimeout(this._timer); this._timer=null;
+    if(this._saving) return this._inflight||false;
+    if(!this._dirty) return true;
+
+    const revInicio=this._rev;
+    this._saving=true;
+    this._inflight=(async()=>{
+      try{
+        const docs=o.getDocs?o.getDocs():new Map();
+        const cambios=[];
+
+        docs.forEach((doc,path)=>{
+          const s=this._fp(doc);
+          if(this._synced.get(path)!==s) cambios.push({p:path,o:doc,s:s});
+        });
+
+        this._synced.forEach((s,path)=>{
+          if(this._esDocSoloTransaccional(path)) return;
+          if(!docs.has(path)) cambios.push({p:path,borrar:true});
+        });
+
+        for(let i=0;i<cambios.length;i+=400){
+          const lote=cambios.slice(i,i+400);
+          const b=fbDb.batch();
+          lote.forEach(c=>{
+            const ref=fbDb.doc(c.p);
+            if(c.borrar) b.delete(ref);
+            else b.set(ref,c.o);
+          });
+          await b.commit();
+          lote.forEach(c=>{
+            if(c.borrar) this._synced.delete(c.p);
+            else this._synced.set(c.p,c.s);
+          });
+        }
+
+        clearTimeout(this._retryTimer); this._retryTimer=null;
+        this._dirty=(this._rev!==revInicio);
+
+        // Fase post-confirmacion: si falla no debe degradar el resultado de persistencia.
+        if(o.onFlushConfirmed){
+          try{ await o.onFlushConfirmed(revInicio); }
+          catch(e){ console.error('Post flush',e); }
+        }
+        if(o.onFlushResult) o.onFlushResult('ok');
+        return true;
+      }catch(e){
+        console.error('Guardar',e);
+        /* ⚠ No todos los errores son iguales:
+           - Sin internet / servidor ocupado → es pasajero: se reintenta y sale solo.
+           - permission-denied → el dato NO pasó la validación de las reglas. Eso NO se arregla
+             esperando: reintentar es un bucle infinito contra una pared. Se corta el reintento
+             y se avisa lo que de verdad pasa.
+           Antes todo caía en «revisá la conexión», y por eso un camión rechazado por las reglas
+           parecía un problema de internet (27/10/2026). */
+        const rechazado=/permission[-_ ]?denied/i.test(String((e&&(e.code||e.message))||''));
+        if(o.onFlushResult) o.onFlushResult('error',e,rechazado);
+        this._dirty=true;
+        if(!rechazado) this._programarReintento();
+        return false;
+      }finally{
+        this._saving=false;
+        this._inflight=null;
+        if(this._dirty&&!this._timer&&!this._retryTimer) this._programarFlush(0);
+      }
+    })();
+
+    return this._inflight;
+  },
+
+  pending(){ return this._dirty||this._saving||!!this._timer||!!this._retryTimer; },
+};
+
+</script>
+<script>/* ── js/constantes.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    FLOR DE CEIBO — Sistema de gestión · DEMOSTRACIÓN
    Wydan Solutions · Todos los datos son inventados.
@@ -693,7 +958,7 @@ const LOCALES = [
    false → (demo público) cada tienda tiene su local y su tienda online por separado. */
 /* MODO_DEMO: true = demostración (datos de ejemplo en el navegador, botón para reiniciar).
    En la página real va en false: arranca vacía y los datos viven en la nube. */
-const MODO_DEMO = true;
+/* (MODO_DEMO ahora lo decide js/firebase-config.js, según desde dónde se abre la página) */
 let STOCK_UNICO = true;    /* decisión de la clienta (05/11/2026): un solo stock para las dos tiendas y la web */
 
 const CANALES  = ['Salón','WhatsApp','Instagram','Tienda web','Desfile / evento'];
@@ -813,6 +1078,8 @@ const PERMISOS = {
   'Vendedora':  ['panel','clientas','stock','ventas']
 };
 
+</script>
+<script>/* ── js/utils.js ── */
 /* ═══════════ 2. UTILIDADES ═══════════ */
 const $  = (s,c)=> (c||document).querySelector(s);
 const $$ = (s,c)=> Array.from((c||document).querySelectorAll(s));
@@ -861,18 +1128,44 @@ const inicial = n => (n||'?').trim().charAt(0).toUpperCase();
 const colorTexto = i => 'c'+((i%4)+1);
 const hexColor = n => (COLORES.find(c=>c.n===n)||{h:colorDe(n)}).h;
 
+</script>
+<script>/* ── js/datos.js ── */
 /* ═══════════ 3. CAPA DE DATOS ═══════════
-   Toda la página habla con Store. El día que se conecte una base en la nube
-   (Firebase u otra) se cambia SOLO el objeto Repo; el resto no se toca. */
+   Toda la página habla con Store (all / get / upsert / del / cfg / guardar). Ninguna pantalla sabe
+   dónde se guardan los datos:
+   · MODO_DEMO  → en el navegador (localStorage), con los datos de ejemplo.
+   · nube       → Firestore: CADA registro es un documento (colección/id). Se sube solo lo que cambió
+                  (SyncManager compara huellas) y se escucha en vivo lo que cambian las demás.
+   Los COSTOS de las prendas viajan aparte (colección «costos»): así las reglas pueden dejar que una
+   vendedora vea el stock sin poder leer cuánto costó cada prenda. En memoria siguen dentro de la prenda. */
+
+/* lo que se guarda en la nube (config/general es la configuración) */
+const COLECCIONES = ['usuarios','clientas','productos','costos','ventas','devoluciones','proveedores','ingresos',
+  'pagosProv','campanas','plantillas','posts','eventos','esperas','movStock','cobros','avisos','gastos',
+  'ventasAnuladas','etiquetas','mensajes','webSync','config'];
+const CAMPOS_COSTO = ['costo','costoEstimado'];
+
+/* huella estable: mismo contenido → mismo texto, sin importar el orden de las claves ni los undefined */
+function canon(v){
+  if (Array.isArray(v)) return v.map(canon);
+  if (v && typeof v === 'object'){
+    const o = {}; Object.keys(v).sort().forEach(k=>{ if (v[k] !== undefined) o[k] = canon(v[k]); }); return o;
+  }
+  return v;
+}
+const huella = v => JSON.stringify(canon(v === undefined ? null : v));
+
 const Repo = {
   clave:'flordeceibo_demo_' + CFG.version,
   leer(){
+    if (!MODO_DEMO) return null;
     try{ const t=localStorage.getItem(this.clave); return t?JSON.parse(t):null; }catch(e){ return null; }
   },
   guardar(db){
+    if (!MODO_DEMO){ if (fbDb && ESTADO.usuario) SyncManager.markDirty(); return; }
     try{ localStorage.setItem(this.clave, JSON.stringify(db)); }catch(e){ /* sin espacio: sigue en memoria */ }
   },
-  borrar(){ try{ localStorage.removeItem(this.clave); }catch(e){} }
+  borrar(){ if (MODO_DEMO){ try{ localStorage.removeItem(this.clave); }catch(e){} } }
 };
 
 let DB = null;
@@ -881,33 +1174,132 @@ const Store = {
   all(col){ return DB[col] || []; },
   get(col,id){ return (DB[col]||[]).find(x=>x.id===id); },
   upsert(col,obj){
+    if(!DB[col]) DB[col] = [];
     if(!obj.id){ obj.id = uid(col.slice(0,3)); DB[col].push(obj); }
     else { const i=DB[col].findIndex(x=>x.id===obj.id); i>=0 ? DB[col][i]=Object.assign(DB[col][i],obj) : DB[col].push(obj); }
     Repo.guardar(DB); return obj;
   },
-  del(col,id){ DB[col]=DB[col].filter(x=>x.id!==id); Repo.guardar(DB); },
+  del(col,id){ DB[col]=(DB[col]||[]).filter(x=>x.id!==id); Repo.guardar(DB); },
   cfg(k,v){ if(v!==undefined){ DB.cfg[k]=v; Repo.guardar(DB); } return DB.cfg[k]; },
   guardar(){ Repo.guardar(DB); }
 };
 
-/* Capa de envío de WhatsApp — hoy abre el WhatsApp de la usuaria (gratis y sin
-   riesgo). El día que se contrate la API de WhatsApp Business se cambia acá. */
+/* ── la nube: cómo se ve la memoria como documentos, y al revés ── */
+const Nube = {
+  /* qué escucha cada usuaria: lo que no puede leer, ni se pide (las reglas lo rechazarían) */
+  consulta(col){
+    const u = ESTADO.usuario;
+    if (col==='gastos' && !puede('gastos')) return null;
+    if ((col==='ingresos' || col==='pagosProv') && !puede('proveedores') && !puede('$$')) return null;
+    if (col==='costos' && !puede('$$')) return null;
+    if (col==='ventas' && !puede('totales')) return fbDb.collection('ventas').where('vend','==',u.id);
+    return fbDb.collection(col);
+  },
+  /* la prenda sin el costo, y el costo aparte (solo si está cargado: quien no lo puede leer no lo pisa) */
+  docsDe(col, o){
+    if (col!=='productos') return [[col+'/'+o.id, o]];
+    const p = Object.assign({}, o); const c = {};
+    CAMPOS_COSTO.forEach(k=>{ if (p[k]!==undefined){ c[k]=p[k]; } delete p[k]; });
+    const out = [['productos/'+o.id, p]];
+    if (c.costo!==undefined && c.costo!==null) out.push(['costos/'+o.id, c]);
+    return out;
+  },
+  todos(){
+    const m = new Map();
+    COLECCIONES.forEach(col=>{
+      if (col==='config' || col==='costos') return;
+      (DB[col]||[]).forEach(o=>{ if (o && o.id) Nube.docsDe(col,o).forEach(([p,d])=>m.set(p,canon(d))); });
+    });
+    m.set('config/general', canon(DB.cfg||{}));
+    return m;
+  },
+  uno(path){
+    const [col,id] = path.split('/');
+    if (col==='config') return id==='general' ? canon(DB.cfg||{}) : null;
+    if (col==='costos'){ const p = Store.get('productos',id); if (!p) return null; const r = Nube.docsDe('productos',p).find(x=>x[0]===path); return r ? canon(r[1]) : null; }
+    const o = Store.get(col,id); if (!o) return null;
+    const r = Nube.docsDe(col,o).find(x=>x[0]===path); return r ? canon(r[1]) : null;
+  },
+  _costosSueltos:{},
+  poner(col,id,doc){
+    if (col==='config'){ if (id==='general') DB.cfg = Object.assign({}, doc); return; }
+    if (col==='costos'){ const p = Store.get('productos',id); if (p) Object.assign(p, doc); else Nube._costosSueltos[id] = doc; return; }
+    if (!DB[col]) DB[col] = [];
+    const o = Object.assign({}, doc, {id});
+    if (col==='productos' && Nube._costosSueltos[id]){ Object.assign(o, Nube._costosSueltos[id]); delete Nube._costosSueltos[id]; }
+    const i = DB[col].findIndex(x=>x.id===id);
+    if (i>=0){
+      /* el costo no viene en la prenda: se conserva el que ya estaba en memoria */
+      if (col==='productos') CAMPOS_COSTO.forEach(k=>{ if (o[k]===undefined && DB[col][i][k]!==undefined) o[k]=DB[col][i][k]; });
+      DB[col][i] = o;
+    } else DB[col].push(o);
+  },
+  sacar(col,id){
+    if (col==='costos'){ const p = Store.get('productos',id); if (p) CAMPOS_COSTO.forEach(k=>delete p[k]); return true; }
+    if (!DB[col]) return false;
+    const n = DB[col].length; DB[col] = DB[col].filter(x=>x.id!==id); return DB[col].length!==n;
+  },
+  /* cuando otra persona cambia algo: se redibuja, salvo que esté escribiendo o con una ventana abierta */
+  _pend:false, _timer:null,
+  alCambiar(){
+    clearTimeout(Nube._timer);
+    Nube._timer = setTimeout(()=>{
+      if (!ESTADO.usuario || $('#app').classList.contains('oculto')) return;
+      const a = document.activeElement;
+      const escribiendo = a && a.closest && a.closest('#vista') && /INPUT|TEXTAREA|SELECT/.test(a.tagName);
+      if ($('#modales').innerHTML || escribiendo){ Nube._pend = true; return; }
+      Nube._pend = false; pintarEncabezado(); render();
+    }, 250);
+  },
+  /* número de venta nuevo, único para todas: una vendedora no ve las ventas de las demás, así que no puede
+     sacarlo de lo que tiene en pantalla. Lo da un contador en la nube (contadores/ventas), con una
+     transacción: si dos guardan a la vez, cada una recibe el suyo. Sin internet, sigue con el de pantalla. */
+  async nroVenta(minimo){
+    const ref = fbDb.collection('contadores').doc('ventas');
+    try{
+      return await fbDb.runTransaction(async tx=>{
+        const d = await tx.get(ref), n = Math.max(minimo - 1, d.exists ? (+d.data().n || 0) : 0) + 1;
+        tx.set(ref, {n}); return n;
+      });
+    }catch(e){ console.warn('Contador de ventas sin conexión:', e && e.code); return minimo; }
+  },
+  pendienteRedibujar(){ if (Nube._pend){ Nube._pend = false; pintarEncabezado(); render(); } },
+  configurar(){
+    SyncManager.configure({
+      cols: COLECCIONES,
+      consulta: Nube.consulta,
+      fingerprint: huella,
+      getDocs: Nube.todos,
+      getDoc: Nube.uno,
+      applyRemotePut: Nube.poner,
+      applyRemoteDelete: Nube.sacar,
+      onRemoteChange: Nube.alCambiar,
+      onFlushResult(estado, err, rechazado){
+        Nube.estado = estado;
+        if (estado==='error') toast(rechazado ? 'No tenés permiso para guardar ese cambio' : 'Sin conexión: se guarda apenas vuelva internet');
+      }
+    });
+  }
+};
+/* no cerrar la página con cambios sin subir */
+window.addEventListener('beforeunload', e=>{ if (!MODO_DEMO && fbDb && SyncManager.pending()){ e.preventDefault(); e.returnValue=''; } });
+
+/* Capa de envío de WhatsApp: abre el WhatsApp de la usuaria con el texto listo (gratis, sin riesgo). */
 const WhatsApp = {
-  automatico:false,                                   // se activa con la API paga
   link(tel, texto, pais){
     return 'https://wa.me/'+telWa(tel, pais)+'?text='+encodeURIComponent(texto);
   },
   abrir(tel, texto, pais){ window.open(this.link(tel,texto,pais),'_blank','noopener'); }
 };
 
-/* Capa de métricas de redes — en la demo son datos simulados realistas.
-   Conectando las cuentas (API de Meta / TikTok) se reemplaza esta función. */
+/* Las métricas de redes que quedaron en los datos de ejemplo (no se muestran en ninguna pantalla). */
 const Redes = {
-  envivo:false,
   serie(redId){ return (DB.redes||[]).filter(r=>r.red===redId).sort((a,b)=>a.mes<b.mes?-1:1); },
   ultimo(redId){ const s=this.serie(redId); return s[s.length-1]||{}; }
 };
 
+</script>
+<script>/* ── js/datos-ejemplo.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    4. DATOS DE EJEMPLO — TODO INVENTADO
    Nombres, teléfonos, precios y ventas son de mentira, armados para que la
@@ -1521,6 +1913,8 @@ function generarHistorial(db){
   return db;
 }
 
+</script>
+<script>/* ── js/calculos.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    5. CÁLCULOS DEL NEGOCIO
    ══════════════════════════════════════════════════════════════════════ */
@@ -1696,6 +2090,8 @@ function mejorDia(){
   return {dia:DIA_NOM[mx], monto:prom[mx]};
 }
 
+</script>
+<script>/* ── js/nav.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    6. MOTOR DE VISTAS
    ══════════════════════════════════════════════════════════════════════ */
@@ -1803,6 +2199,8 @@ function repintar(id, html){ const e=document.getElementById(id); if(e){ e.inner
 
 const VISTAS = {};
 
+</script>
+<script>/* ── js/panel.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · PANEL DEL DÍA
    ══════════════════════════════════════════════════════════════════════ */
@@ -1996,6 +2394,8 @@ function sugerencias(){
   return s;
 }
 
+</script>
+<script>/* ── js/clientes.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · CLIENTAS (CRM)
    ══════════════════════════════════════════════════════════════════════ */
@@ -2291,6 +2691,8 @@ function vistaEsperas(){
     <div style="margin-top:14px"><button class="btn sec" onclick="formEspera()">＋ Anotar un encargue</button></div>`);
 }
 
+</script>
+<script>/* ── js/stock.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · STOCK / PRODUCTOS  (los dos locales + la tienda online juntos)
    ══════════════════════════════════════════════════════════════════════ */
@@ -2340,6 +2742,8 @@ VISTAS.stock = function(){
   </div>`}
 
   ${sub==='movimientos' && !STOCK_UNICO ? `<div class="mt">${vistaMovimientos()}</div>` : `
+  ${paraCorregirWeb()}
+
   <div class="grid g3 mt">
     ${card('Lo más vendido (30 días)', barraRank(topProductos(30,5).map(t=>({
       n:esc(t.p.nombre), sub:'Talle '+t.p.talle, v:t.cant, txt:t.cant+' u', color:'oliva'}))) || vacio('Sin datos'))}
@@ -2661,6 +3065,39 @@ function fichaProducto(id){
       <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'ancho');
 }
 
+/* ── Para corregir en la web ──
+   El motor (Apps Script) trae cada pocos minutos las ventas de la tienda web y las descuenta acá, y anota en
+   cada prenda cuántas dice la web que hay (p.web.stock). Lo que se vende en los locales la web no lo sabe:
+   con una credencial de SOLO LECTURA hay que corregirlo a mano en Urutienda. Esta lista dice exactamente qué.
+   Con una credencial de escritura, el motor lo corrige solo y esta lista queda vacía. */
+function difWeb(){
+  return T('productos').filter(p=>p.activo!==false && p.web && typeof p.web.stock==='number' && p.web.controla!==false
+    && p.web.stock !== stockTotal(p));
+}
+function paraCorregirWeb(){
+  if(!puede('editStock')) return '';                 // lo corrige quien maneja el stock
+  const ds = difWeb(); if(!ds.length) return '';
+  return card('Para corregir en la tienda web', `
+    <div class="mini" style="margin-bottom:10px">La web todavía muestra otro número porque estas prendas se vendieron
+      (o entraron) en los locales. Entrá a Urutienda y poné el número de la derecha.</div>
+    <div class="tabla-wrap"><table class="t resp"><thead><tr><th>Prenda</th><th class="cen">La web dice</th>
+      <th class="cen">Poné</th><th class="der"></th></tr></thead><tbody>
+      ${ds.slice(0,40).map(p=>`<tr>
+        <td data-l="Prenda" class="principal">${lineaProd(p, esc(p.cod))}</td>
+        <td data-l="La web dice" class="cen">${p.web.stock}</td>
+        <td data-l="Poné" class="cen"><b>${stockTotal(p)}</b></td>
+        <td class="der"><button class="btn chico sec" onclick="webCorregido('${p.id}')">Ya lo corregí</button></td></tr>`).join('')}
+    </tbody></table></div>${ds.length>40?`<div class="mini" style="padding:8px">y ${ds.length-40} más</div>`:''}`,
+    {clase:'mt', sub: ds.length+' prenda'+(ds.length>1?'s':'')+' con otro número en la web'});
+}
+function webCorregido(id){
+  const p = prod(id); if(!p.id || !p.web) return;
+  p.web = Object.assign({}, p.web, {stock: stockTotal(p)}); Store.upsert('productos', p);
+  toast('Anotado. El motor lo confirma en la próxima vuelta.'); render();
+}
+
+</script>
+<script>/* ── js/ventas.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · VENTAS
    ══════════════════════════════════════════════════════════════════════ */
@@ -2982,6 +3419,8 @@ function vistaCambios(){
     {acc:`<button class="btn sec chico" onclick="formDevolucion()">＋ Registrar</button>`})}`;
 }
 
+</script>
+<script>/* ── js/proveedores.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · PROVEEDORES E INGRESO DE MERCADERÍA
    ══════════════════════════════════════════════════════════════════════ */
@@ -3169,6 +3608,8 @@ function verIngreso(id){
       <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'ancho');
 }
 
+</script>
+<script>/* ── js/marketing.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · MARKETING, REDES Y PUBLICIDAD
    ══════════════════════════════════════════════════════════════════════ */
@@ -3315,6 +3756,8 @@ function telefono(nom, texto){
   </div></div>`;
 }
 
+</script>
+<script>/* ── js/campanas.js ── */
 function mktWhatsApp(){
   const f = ESTADO.filtros;
   const seg = f.seg || 'dormidas';
@@ -3625,6 +4068,8 @@ function waProveedor(id){
   WhatsApp.abrir(p.tel, `Hola ${p.contacto.split(' ')[0]}, te escribo de Flor de Ceibo (Rivera). Quería consultarte por un pedido.`);
 }
 
+</script>
+<script>/* ── js/gastos.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    VISTA · CONFIGURACIÓN
    ══════════════════════════════════════════════════════════════════════ */
@@ -3916,6 +4361,8 @@ function exportarGastos(){
         dmy(g.vence), estadoGasto(g), g.medio, g.notas])]);
 }
 
+</script>
+<script>/* ── js/config.js ── */
 VISTAS.config = function(){
   const us = T('usuarios');
   return `
@@ -4002,19 +4449,20 @@ VISTAS.config = function(){
 };
 
 /* ── Conexiones: lo que está enchufado de verdad ──
-   cfg.sync lo escribe la sincronización con la tienda web (Apps Script) cada vez que corre:
-   {ultima:'aaaa-mm-ddThh:mm', error:''}. */
+   webSync/estado lo escribe el motor de la tienda web (Apps Script, herramientas/motor-tienda-web) en cada vuelta:
+   {ultima:"aaaa-mm-ddThh:mm", error, cargaInicial, productosNuevos, pedidosNuevos, pedidosCancelados}. */
 function tarjetaConexiones(){
-  const s = Store.cfg('sync') || {};
+  const s = Store.get('webSync','estado') || {};   // lo escribe el motor de la tienda web (Apps Script)
   const web = MODO_DEMO ? ['En la demostración no está conectada.', 'linea', 'demostración']
-    : s.ultima ? ['Última actualización: '+dmy(s.ultima.slice(0,10))+' a las '+s.ultima.slice(11,16)+(s.error?' · hubo un problema: '+s.error:''),
-                  s.error ? 'mal' : 'ok', s.error ? 'revisar' : 'conectada']
+    : s.ultima ? ['Última revisión: '+dmy(s.ultima.slice(0,10))+' a las '+s.ultima.slice(11,16)
+                    +(s.cargaInicial?' · todavía trayendo el catálogo de la web':'')+(s.error?' · hubo un problema: '+s.error:''),
+                  s.error ? 'mal' : s.cargaInicial ? 'al' : 'ok', s.error ? 'revisar' : s.cargaInicial ? 'cargando' : 'conectada']
     : ['Todavía no se sincronizó.', 'al', 'pendiente'];
   const fila = (tit, txt, det, cls, chip) => `<div class="it"><span class="pun" style="background:var(--${cls==='ok'?'ok':cls==='mal'?'mal':cls==='al'?'alerta':'tinta-3'})"></span>
     <div class="txt"><b>${esc(tit)}</b><span>${esc(txt)}</span>${det?`<span style="display:block;margin-top:2px">${esc(det)}</span>`:''}</div>
     <div class="fin"><span class="chip ${cls}">${esc(chip)}</span></div></div>`;
   return `<div class="lista">
-    ${fila('Tienda web (Urutienda)', 'Un solo stock: cada venta de la web se descuenta acá y cada cambio de acá se manda a la web, cada pocos minutos.', web[0], web[1], web[2])}
+    ${fila('Tienda web (Urutienda)', 'Un solo stock. Cada 5 minutos se traen las ventas de la web y se descuentan acá solas. Lo que se vende en los locales hay que corregirlo a mano en la web: la lista está en Stock.', web[0], web[1], web[2])}
     ${fila('WhatsApp', 'Los mensajes salen desde tu propio WhatsApp, uno a uno, con el texto listo para enviar.', '', 'ok', 'lista')}
     ${fila('Respaldo semanal', 'Todas las semanas te llega por correo una copia de tus datos en Excel.', '', MODO_DEMO?'linea':'ok', MODO_DEMO?'demostración':'activo')}
   </div>`;
@@ -4083,6 +4531,8 @@ function listaQuitar(i){
   a.splice(i,1); listaGuardar(L); repintar('lst-panel', panelLista()); toast('Sacado de la lista');
 }
 
+</script>
+<script>/* ── js/formularios.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    7. VENTANAS, FORMULARIOS Y ACCIONES
    ══════════════════════════════════════════════════════════════════════ */
@@ -4092,7 +4542,7 @@ function abrirModal(html, clase){
   document.body.style.overflow='hidden';
   correrPendientes();
 }
-function cerrarModal(){ $('#modales').innerHTML=''; document.body.style.overflow=''; }
+function cerrarModal(){ $('#modales').innerHTML=''; document.body.style.overflow=''; if(!MODO_DEMO && typeof Nube!=='undefined') Nube.pendienteRedibujar(); }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') cerrarModal(); });
 
 /* formulario genérico: se le pasan los campos y arma la ventana solo */
@@ -4144,6 +4594,8 @@ function formGen(o){
   };
 }
 
+</script>
+<script>/* ── js/form-productos.js ── */
 /* ── clientes ── */
 function formClienta(id){
   const c = id? clienta(id) : {};
@@ -4196,7 +4648,7 @@ function formProducto(id){
       {k:'temporada', l:'Temporada', t:'select', op:conActual(TEMPORADAS, p.temporada)},
       {k:'color', l:'Color', t:'select', op:conActual(COLORES.map(c=>c.n), p.color)},
       {k:'talle', l:'Talle', t:'select', op:conActual(TALLES, p.talle)},
-      {k:'costo', l:'Costo ($)', t:'number'},
+      ...(vePlata() ? [{k:'costo', l:'Costo ($)', t:'number'}] : []),
       {k:'precio', l:'Precio de venta ($)', t:'number'},
       ...depositos().map(l=>({k:l.id, l: STOCK_UNICO ? 'Unidades en stock' : 'Stock en '+l.nombre, t:'number'})),
       {k:'ubic', l:'¿Dónde está?', t:'select', op:[['','— Sin definir —'],...conActual(UBICACIONES, p.ubic)]},
@@ -4208,6 +4660,7 @@ function formProducto(id){
     ],
     guardar(d){
       if(!d.nombre){ toast('Falta el nombre'); return false; }
+      if(!vePlata()) d.costo = p.costo;   // sin permiso no se ve ni se toca
       if(d.precio<0 || d.costo<0){ toast('El precio y el costo no pueden ser negativos'); return false; }
       if(depositos().some(l=>d[l.id]<0)){ toast('Las unidades no pueden ser negativas'); return false; }
       const antes = stockTotal(p);
@@ -4355,6 +4808,9 @@ function guardarModelo(){
   toast([nuevos? nuevos+' artículos nuevos' : '', sumados? sumados+' ya existían (se les sumó el stock)' : '', unidades? unidades+' unidades' : '']
     .filter(Boolean).join(' · '));
 }
+
+</script>
+<script>/* ── js/form-ventas.js ── */
 /* ── venta ── */
 let VENTA = {items:[]};
 function formVenta(id){
@@ -4481,7 +4937,8 @@ function pintarItems(){
   if(r){ const x = Math.round(+($('#v_monto2')||{}).value||0);
     r.textContent = !t ? '' : x>0 && x<t ? 'Con '+$('#v_medio').value+' paga '+money(t-x)+'.' : 'Poné un monto mayor que 0 y menor que el total ('+money(t)+').'; }
 }
-function guardarVenta(){
+async function guardarVenta(){
+  if(VENTA.guardando) return;                       // doble toque mientras se pide el número
   if(!VENTA.items.length && VENTA.tocado) agregarItem();
   if(!VENTA.items.length){ toast('Agregá al menos una prenda'); return; }
   const fecha = $('#v_fecha').value || hoyISO();
@@ -4517,8 +4974,10 @@ function guardarVenta(){
   const cobrado = v0 ? suma(Store.all('cobros').filter(c=>c.venta===v0.id), c=>+c.monto||0) : 0;
   const saldo = Math.max(0, fiado - cobrado);
   const facturada = $('#v_fact').checked;
+  let nro = v0 ? v0.nro : proximoNroVenta();
+  if(!v0 && !MODO_DEMO){ VENTA.guardando = true; try{ nro = await Nube.nroVenta(nro); } finally { VENTA.guardando = false; } }
   const ahora = String(hoy().getHours()).padStart(2,'0')+':'+String(hoy().getMinutes()).padStart(2,'0');
-  const datos = {tienda: v0? v0.tienda : ESTADO.tienda, nro: v0? v0.nro : proximoNroVenta(), fecha,
+  const datos = {tienda: v0? v0.tienda : ESTADO.tienda, nro, fecha,
     hora: v0 && v0.fecha===fecha ? v0.hora : (fecha===hoyISO() ? ahora : '12:00'),
     local, canal:$('#v_canal').value, vend:$('#v_vend').value, clienta:cid,
     items:VENTA.items, total, medio: pagos.map(p=>p.medio).join(' + '), pagos, facturada,
@@ -4610,6 +5069,8 @@ function cobrarFiado(id){
     }});
 }
 
+</script>
+<script>/* ── js/form-compras.js ── */
 /* ── proveedores e ingresos ── */
 function formProveedor(id){
   const p = id? Store.get('proveedores',id):{tiendas:[ESTADO.tienda]};
@@ -4819,6 +5280,9 @@ function avisarEsperas(pids){
   if(n){ pintarEncabezado(); toast('Hay '+n+' cliente'+(n>1?'s':'')+' esperando esa prenda: te quedó el aviso en la campanita'); }
 }
 function cerrarEspera(id){ const e=Store.get('esperas',id); e.estado='Entregado'; Store.upsert('esperas',e); render(); toast('Listo'); }
+
+</script>
+<script>/* ── js/form-devoluciones.js ── */
 /* ── devoluciones ── */
 function formDevolucion(vid){
   const vs = ventasTienda().slice().sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
@@ -4928,6 +5392,9 @@ function devBorrar(id){
   if(!confirm('¿Borrar este cambio pendiente?')) return;
   Store.del('devoluciones', id); render(); toast('Borrado');
 }
+
+</script>
+<script>/* ── js/form-varios.js ── */
 /* ── contenido, eventos, pauta, plantillas, usuarias ── */
 function formPost(id, fecha){
   const p = id? Store.get('posts',id):{fecha:fecha||hoyISO(), estado:'idea', red:'ig', tipo:'Reel'};
@@ -5035,7 +5502,7 @@ function provBorrar(id){
 }
 /* las colecciones que se agregaron después tienen que existir aunque los datos sean viejos */
 function asegurarColecciones(){
-  ['ventasAnuladas','cobros','esperas','devoluciones','avisos','pagosProv','movStock','ingresos','eventos','posts','plantillas','campanas','gastos','etiquetas','mensajes']
+  ['usuarios','clientas','productos','ventas','proveedores','ventasAnuladas','cobros','esperas','devoluciones','avisos','pagosProv','movStock','ingresos','eventos','posts','plantillas','campanas','gastos','etiquetas','mensajes','webSync']
     .forEach(c=>{ if(!Array.isArray(DB[c])) DB[c] = []; });
 }
 /* los nombres de los locales se pueden cambiar en Configuración */
@@ -5057,6 +5524,7 @@ function formUsuario(id){
     aviso:'Cada una entra con su propio usuario. El rol trae permisos de entrada; abajo los ajustás para esta persona. La dueña tiene todo, siempre.',
     campos:[
       {k:'nombre', l:'Nombre', ancho:2},
+      ...(!MODO_DEMO && !id ? [{k:'correo', l:'Correo con el que va a entrar', t:'email', ancho:2, ph:'nombre@correo.com'}] : []),
       {k:'rol', l:'Rol', t:'select', op:Object.keys(PERMISOS), onchange:'usrRolCambio(this.value)'},
       {k:'tienda', l:'¿En qué tienda trabaja?', t:'select', op:[['','Las dos (dueña)'],...TIENDAS.map(t=>[t.id,t.nombre])]},
       {k:'local', l:'¿En qué local?', t:'select', op:[['','Todos'],...LOCALES.map(l=>[l.id, tiendaNom(l.tienda)+' — '+l.nombre])]},
@@ -5068,7 +5536,7 @@ function formUsuario(id){
       if(!d.nombre){ toast('Falta el nombre'); return false; }
       if(d.local && d.tienda && tiendaDeLocal(d.local)!==d.tienda){ toast('Ese local es de la otra tienda'); return false; }
       if(d.comision<0 || d.comision>100){ toast('La comisión va de 0 a 100 %'); return false; }
-      if(d.rol==='Dueña'){ d.permisos = undefined; }
+      if(d.rol==='Dueña'){ d.permisos = undefined; d.tienda = ''; d.local = ''; }   // la dueña ve las dos tiendas
       else {
         d.permisos = ['panel'].concat((d.permN||[]).map(l=>(PERMISOS_LISTA.find(p=>p[1]===l)||[])[0]).filter(Boolean));
         if(d.permisos.length<2){ toast('Marcá al menos una sección'); return false; }
@@ -5078,8 +5546,16 @@ function formUsuario(id){
       delete d.permN;
       d.activo = (id && u.rol!=='Dueña') ? d.activo!==false : true;
       if(id===ESTADO.usuario.id && !d.activo){ toast('No podés darte de baja a vos misma'); return false; }
+      if(!MODO_DEMO && !id){
+        const correo = String(d.correo||'').trim().toLowerCase();
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)){ toast('Falta el correo con el que va a entrar'); return false; }
+        if(Store.get('usuarios', correo) || correo===CORREO_SOPORTE){ toast('Ese correo ya está en la lista'); return false; }
+        id = correo;
+      }
+      delete d.correo;
       d.id = id; Store.upsert('usuarios', d);
       if(id===ESTADO.usuario.id) ESTADO.usuario = usuario(id);
+      if(!MODO_DEMO && !u.id){ toast('Usuaria agregada. Para que pueda entrar, Wydan le crea el acceso y le llega un correo para elegir su contraseña.'); return; }
       toast(d.activo ? 'Usuaria guardada' : 'Usuaria dada de baja: ya no puede entrar');
     }});
 }
@@ -5087,8 +5563,11 @@ function usrRolCambio(rol){
   const def = rol==='Dueña' ? PERMISOS_LISTA.map(p=>p[0]) : (PERMISOS[rol]||[]);
   $$('#f_permN_box .chip').forEach(b=>{ const k = (PERMISOS_LISTA.find(p=>p[1]===b.dataset.v)||[])[0];
     const on = def.includes(k); b.classList.toggle('vip', on); b.classList.toggle('linea', !on); });
+  if(rol==='Dueña'){ const t=$('#f_tienda'), l=$('#f_local'); if(t) t.value=''; if(l) l.value=''; }
 }
 
+</script>
+<script>/* ── js/etiquetas.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    ETIQUETAS DE CLIENTES — colección «etiquetas» {id, nombre, color};
    cada cliente guarda «etiquetas: [ids]». Todo pasa por Store.
@@ -5238,6 +5717,8 @@ function etqQuitarDe(cid, eid){
   c.etiquetas = (c.etiquetas||[]).filter(x=>x!==eid); Store.guardar(); fichaClienta(cid);
 }
 
+</script>
+<script>/* ── js/mensajes.js ── */
 /* ══════════════════════════════════════════════════════════════════════
    MARKETING · MENSAJES — uno a uno, gratis, abriendo el WhatsApp de la usuaria
    ══════════════════════════════════════════════════════════════════════ */
@@ -5646,6 +6127,7 @@ function msjDeCliente(id){
 }
 /* para que el demo no arranque con el historial vacío */
 function sembrarMensajes(){
+  if(!MODO_DEMO) return;
   if(!DB.cfg || DB.cfg.msjSembrados || (DB.mensajes||[]).length) return;
   const cls = (DB.clientas||[]).filter(c=>c.optin && telWa(c.tel, c.pais)), pls = DB.plantillas||[];
   if(!cls.length || !pls.length) return;
@@ -5657,6 +6139,9 @@ function sembrarMensajes(){
   }
   DB.cfg.msjSembrados = true; Repo.guardar(DB);
 }
+
+</script>
+<script>/* ── js/exportar.js ── */
 /* ══════════════ EXPORTAR A EXCEL (CSV que Excel abre directo) ══════════════ */
 async function descargarCSV(nombre, filas){
   const txt = '﻿' + filas.map(f=>f.map(c=>{
@@ -5715,180 +6200,8 @@ function exportarIngresos(){
       i.total,dmy(i.vence),i.estado])]);
 }
 
-/* ══════════════ SESIÓN E INICIO ══════════════ */
-function cambiarLocal(v){ ESTADO.local=v; render(); }
-
-/* ══════════ elegir tienda ══════════ */
-function pintarTiendas(){
-  $('#tienda-cards').innerHTML = TIENDAS.map(t=>{
-    const col = t.tema['--terracota'];
-    const vs = Store.all('ventas').filter(v=>v.tienda===t.id);
-    const mes = vs.filter(v=>v.fecha>=hoyISO().slice(0,7)+'-01');
-    const ps  = Store.all('productos').filter(p=>!p.tienda || p.tienda===t.id);
-    return `<button class="tienda-card" style="border-top:4px solid ${col}" onclick="elegirTienda('${t.id}')">
-      <div class="marco">${logoHTML(t.id,'logo')}</div>
-      <h3>${esc(t.nombre)}</h3>
-      <div class="lem">${esc(t.lema)}</div>
-      <div class="dir">${esc(t.rubro)}</div>
-      <div class="datos">
-        <span class="chip linea">${esc(t.dir)}</span>
-        <span class="chip linea">${ps.length} artículos</span>
-        <span class="chip linea">${mes.length} ventas este mes</span>
-      </div>
-      <span class="btn entrar" style="background:${col};border-color:${col}">Entrar a ${esc(t.nombre)} →</span>
-    </button>`;
-  }).join('');
-}
-function elegirTienda(id){
-  ESTADO.tienda = id;
-  ESTADO.local = 'TODOS';
-  aplicarTema(id);
-  const t = tienda(id);
-  $('#elegir').classList.add('oculto');
-  $('#ingreso').classList.remove('oculto');
-  $('#ing-logo').innerHTML = logoHTML(id,'logo');
-  $('#ing-lema').textContent = t.lema;
-  $('#ing-tit').innerHTML = 'Tu tienda, <em>ordenada</em>.';
-  $('#ing-txt').textContent = t.intro;
-  $('#ing-users').innerHTML = usuariasActivas().map(u=>`
-    <button class="ing-user" onclick="entrar('${u.id}')">
-      <span class="avatar ${colorTexto(u.nombre.length)}">${inicial(u.nombre)}</span>
-      <span><b>${esc(u.nombre)}</b><span>${esc(u.rol)}${u.local?' · '+localNom(u.local):' · ve las dos tiendas'}</span></span>
-      <span class="flecha">→</span></button>`).join('');
-  window.scrollTo({top:0});
-}
-function volverAElegir(){
-  cerrarModal();
-  ESTADO.usuario = null;
-  $('#app').classList.add('oculto');
-  $('#ingreso').classList.add('oculto');
-  $('#elegir').classList.remove('oculto');
-  pintarTiendas();
-}
-/* cambiar de tienda sin salir del sistema (solo la dueña) */
-function saltarATienda(id){
-  ESTADO.tienda = id; ESTADO.local = 'TODOS'; ESTADO.vista='panel'; ESTADO.sub=''; ESTADO.filtros={};
-  aplicarTema(id); cerrarModal(); pintarEncabezado(); render();
-  toast('Estás en '+tiendaNom(id));
-}
-function pintarEncabezado(){
-  const t = tienda();
-  $('#top-marca').innerHTML = logoHTML(t.id,'logo') +
-    `<div class="txt"><b>${esc(t.nombre)}</b><span>${esc(t.sub)}</span></div>`;
-  $('#btn-tienda-txt').textContent = otraTienda().nombre;
-  $('#sel-local').innerHTML = `<option value="TODOS">Toda la tienda</option>` +
-    locales().map(l=>`<option value="${l.id}" ${ESTADO.local===l.id?'selected':''}>${esc(l.nombre)}</option>`).join('');
-  const sinLeer = T('avisos').filter(a=>!a.leido).length;
-  $('#campana').innerHTML = '✉' + (sinLeer? `<span class="cuenta">${sinLeer}</span>`:'');
-  // la dueña salta de una tienda a la otra; las empleadas vuelven al inicio
-  $('#btn-tienda').onclick = ()=> ESTADO.usuario && !ESTADO.usuario.tienda ? saltarATienda(otraTienda().id) : volverAElegir();
-}
-
-/* ══════════ avisos entre tiendas ══════════ */
-function nuevoAviso(tiendaDestino, texto){
-  Store.upsert('avisos', {tienda:tiendaDestino, texto, fecha:hoyISO(),
-    hora:String(hoy().getHours()).padStart(2,'0')+':'+String(hoy().getMinutes()).padStart(2,'0'), leido:false});
-}
-function verAvisos(){
-  const av = T('avisos').sort((a,b)=>(a.fecha+a.hora)<(b.fecha+b.hora)?1:-1);
-  abrirModal(`<div class="m-cab"><div><h3>Avisos de ${esc(tienda().nombre)}</h3>
-      <div class="sub">Lo que pasó en la tienda y lo que llegó de la otra</div></div>
-      <div class="x"><button class="ico-btn" onclick="cerrarModal()">✕</button></div></div>
-    <div class="m-cuerpo">
-      ${av.length? av.map(a=>`<div class="aviso-fila ${a.leido?'':'nuevo'}">
-        <span class="pun" style="background:${a.leido?'var(--tinta-3)':'var(--ceibo)'};margin-top:6px"></span>
-        <div style="flex:1"><b>${esc(a.texto)}</b>
-          <div class="mini">${dmy(a.fecha)} · ${esc(a.hora)}</div></div></div>`).join('')
-        : vacio('No hay avisos','✓')}
-    </div>
-    <div class="m-pie">
-      ${av.some(a=>!a.leido)?`<button class="btn sec izq" onclick="marcarAvisos()">Marcar todo como leído</button>`:''}
-      <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'angosto');
-}
-function marcarAvisos(){
-  T('avisos').forEach(a=>{ a.leido=true; Store.upsert('avisos',a); });
-  cerrarModal(); pintarEncabezado(); toast('Avisos leídos');
-}
-
-function menuUsuario(){
-  const puedeCambiar = ESTADO.usuario && !ESTADO.usuario.tienda;
-  abrirModal(`<div class="m-cab"><div><h3>${esc(ESTADO.usuario.nombre)}</h3>
-      <div class="sub">${esc(ESTADO.usuario.rol)} · ${esc(tienda().nombre)}${ESTADO.usuario.local?' · '+localNom(ESTADO.usuario.local):''}</div></div>
-      <div class="x"><button class="ico-btn" onclick="cerrarModal()">✕</button></div></div>
-    <div class="m-cuerpo">
-      <div class="aviso"><span class="em">◐</span><div>Estás viendo la página como <b>${esc(ESTADO.usuario.rol)}</b>.
-        Probá entrar como otra persona para ver cómo cambia lo que se muestra.</div></div>
-      ${puedeCambiar?`<div class="etiqueta" style="margin:16px 0 8px">Cambiar de tienda</div>
-        <div class="lista">${TIENDAS.map(t=>`<div class="it">
-          <span class="pun" style="background:${t.id==='FDC'?'#A0531E':'#DE8C7C'}"></span>
-          <div class="txt"><b>${esc(t.nombre)}</b><span>${esc(t.dir)}</span></div>
-          <div class="fin">${t.id===ESTADO.tienda?'<span class="chip ok">acá estás</span>'
-            :`<button class="btn chico sec" onclick="saltarATienda('${t.id}')">Ir</button>`}</div></div>`).join('')}</div>`:''}
-      <div class="etiqueta" style="margin:16px 0 8px">Quién entra</div>
-      <div class="lista">
-        ${usuariasActivas().map(u=>`<div class="it">
-          <span class="avatar ${colorTexto(u.nombre.length)}">${inicial(u.nombre)}</span>
-          <div class="txt"><b>${esc(u.nombre)}</b><span>${esc(u.rol)}${u.local?' · '+localNom(u.local):' · las dos tiendas'}</span></div>
-          <div class="fin">${u.id===ESTADO.usuario.id?'<span class="chip ok">vos</span>'
-            :`<button class="btn chico sec" onclick="entrar('${u.id}')">Entrar como ella</button>`}</div></div>`).join('')}
-      </div></div>
-    <div class="m-pie"><button class="btn sec izq" onclick="salir()">Cerrar sesión</button>
-      <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'angosto');
-}
-function entrar(id){
-  const u = usuario(id); ESTADO.usuario = u;
-  if(u.tienda && u.tienda!==ESTADO.tienda){ ESTADO.tienda = u.tienda; aplicarTema(u.tienda); }
-  ESTADO.local = 'TODOS';
-  $('#elegir').classList.add('oculto');
-  $('#ingreso').classList.add('oculto');
-  $('#app').classList.remove('oculto');
-  $('#u-nombre').textContent = u.nombre.split(' ')[0];
-  $('#u-rol').textContent = u.rol;
-  $('#u-avatar').textContent = inicial(u.nombre);
-  $('#u-avatar').className = 'avatar '+colorTexto(u.nombre.length);
-  pintarEncabezado();
-  cerrarModal();
-  if(!puede(ESTADO.vista)) ESTADO.vista='panel';
-  render();
-}
-function salir(){
-  cerrarModal(); ESTADO.usuario=null;
-  $('#app').classList.add('oculto'); $('#ingreso').classList.add('oculto');
-  $('#elegir').classList.remove('oculto'); pintarTiendas();
-}
-function reiniciarDemo(){
-  if(!MODO_DEMO) return;
-  if(!confirm('Esto borra todo lo que cargaste y vuelve a los datos de ejemplo. ¿Seguimos?')) return;
-  Repo.borrar(); DB = generarHistorial(semilla()); asegurarColecciones(); migrarStockUnico(DB); migrarEtiquetas(); sembrarMensajes(); MSJ.texto=null; Repo.guardar(DB); aplicarListas(); aplicarLocales(); STK_SEL.clear();
-  toast('Demostración reiniciada'); render();
-}
-function iniciar(){
-  DB = Repo.leer();
-  if(!DB || !DB.ventas || !DB.ventas.length){ DB = generarHistorial(semilla()); Repo.guardar(DB); }
-  DB.cfg = DB.cfg || {};
-  asegurarColecciones();
-  if(migrarStockUnico(DB)) Repo.guardar(DB);
-  migrarEtiquetas();
-  sembrarMensajes();
-  aplicarListas();
-  aplicarLocales();
-  aplicarTema('FDC');
-  pintarTiendas();
-  if(window.Chart){
-    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-    Chart.defaults.font.size = 11.5;
-    Chart.defaults.color = '#6B5C4F';
-    Chart.defaults.plugins.tooltip.backgroundColor = '#2B2119';
-    Chart.defaults.plugins.tooltip.padding = 10;
-    Chart.defaults.plugins.tooltip.cornerRadius = 8;
-    Chart.defaults.plugins.tooltip.titleFont = {family:"'Inter'", weight:'600'};
-  }
-}
-iniciar();
-
 </script>
-<script>
-/* Lista de sugerencias propia — copiada de Maria-Lucia-Furtado/public/js/lista.js (estándar de Wydan). */
+<script>/* ── js/lista.js ── */
 (function(){
   var pop=null, campo=null, marcada=-1, todas=false;
 
@@ -6059,6 +6372,293 @@ iniciar();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arrancar);
   else arrancar();
 })();
+
+</script>
+<script>/* ── js/login.js ── */
+/* ══════════════ INGRESO REAL (Firebase Auth) ══════════════
+   Solo en la página real (y contra los emuladores en esta PC). En MODO_DEMO no se usa.
+   · Cada usuaria entra con SU correo y su contraseña. La contraseña la elige ella con el correo de
+     «restablecer» que manda Firebase: nadie de Wydan la conoce.
+   · Quién puede entrar lo decide la colección «usuarios» (el id de cada documento es el correo), que
+     maneja la dueña desde Configuración. El soporte de Wydan entra siempre (ver firestore.rules).
+   · Se cierra la sesión sola después de MINUTOS_INACTIVIDAD sin tocar nada. */
+const MINUTOS_INACTIVIDAD = 30;
+
+function mostrarLogin(msg){
+  $('#elegir').classList.add('oculto'); $('#ingreso').classList.add('oculto'); $('#app').classList.add('oculto');
+  $('#login').classList.remove('oculto');
+  $('#login-logo').innerHTML = logoHTML('FDC','logo') + logoHTML('TEV','logo');
+  const m = $('#login-msg'); m.textContent = msg || ''; m.style.display = msg ? 'block' : 'none';
+  const b = $('#login-btn'); b.disabled = false; b.textContent = 'Entrar';
+}
+async function loginEntrar(){
+  const correo = ($('#login-correo').value||'').trim().toLowerCase(), clave = $('#login-clave').value||'';
+  if (!correo || !clave){ mostrarLogin('Escribí tu correo y tu contraseña'); return; }
+  const b = $('#login-btn'); b.disabled = true; b.textContent = 'Entrando…';
+  try{ await fbAuth.signInWithEmailAndPassword(correo, clave); }
+  catch(e){
+    const c = String(e && e.code || '');
+    mostrarLogin(/too-many/.test(c) ? 'Demasiados intentos: esperá unos minutos y probá de nuevo'
+      : /network/.test(c) ? 'No hay conexión a internet' : 'El correo o la contraseña no coinciden');
+  }
+}
+async function loginOlvide(){
+  const correo = ($('#login-correo').value||'').trim().toLowerCase();
+  if (!correo){ mostrarLogin('Escribí tu correo arriba y tocá de nuevo «¿Olvidaste tu contraseña?»'); return; }
+  try{ await fbAuth.sendPasswordResetEmail(correo); }catch(e){ /* no se dice si el correo existe o no */ }
+  mostrarLogin('Si ese correo tiene acceso, te llegó un mail para elegir una contraseña nueva. Revisá también el correo no deseado.');
+}
+
+/* ya entró a Firebase: ¿quién es en la página? */
+async function alIngresar(user){
+  const correo = String(user.email||'').toLowerCase();
+  let u = null;
+  try{ const d = await fbDb.collection('usuarios').doc(correo).get(); if (d.exists) u = Object.assign({}, d.data(), {id:correo}); }
+  catch(e){ /* sin permiso de leer: no está habilitada */ }
+  if (!u && correo===CORREO_SOPORTE) u = {id:correo, nombre:'Soporte Wydan', rol:'Dueña', tienda:'', local:'', activo:true, soporte:true};
+  if (!u || u.activo===false){ await fbAuth.signOut(); mostrarLogin('Tu usuario no está habilitado en la página. Pedíselo a la dueña.'); return; }
+  ESTADO.usuario = u;
+  $('#login-btn').textContent = 'Cargando tus datos…';
+  DB = {cfg:{}};
+  try{ Nube.configurar(); await SyncManager.connect(); }
+  catch(e){ await fbAuth.signOut(); mostrarLogin('No se pudieron cargar los datos. Probá de nuevo en un rato.'); return; }
+  prepararDatos();
+  /* si la dueña la editó, se usa la versión de la base (con sus permisos al día) */
+  const enBase = Store.get('usuarios', correo); if (enBase) ESTADO.usuario = enBase;
+  $('#login').classList.add('oculto');
+  if (ESTADO.usuario.tienda){ ESTADO.tienda = ESTADO.usuario.tienda; aplicarTema(ESTADO.tienda); entrar(ESTADO.usuario.id); }
+  else { $('#elegir').classList.remove('oculto'); pintarTiendas(); }
+  vigilarInactividad();
+}
+
+/* la primera vez que entra alguien con permiso de configuración, la base arranca con lo básico:
+   la configuración, las plantillas de mensajes y las etiquetas. Ningún dato inventado. */
+function prepararDatos(){
+  asegurarColecciones();
+  if (puede('config')){
+    let cambio = false;
+    const base = semilla();
+    if (!DB.cfg || !Object.keys(DB.cfg).length){ DB.cfg = Object.assign({}, base.cfg); cambio = true; }
+    if (!DB.plantillas.length){ DB.plantillas = base.plantillas.map(p=>Object.assign({}, p)); cambio = true; }
+    if (!DB.etiquetas.length) cambio = true;
+    migrarEtiquetas();
+    if (cambio) Store.guardar();
+  }
+  DB.cfg = DB.cfg || {};
+  aplicarListas(); aplicarLocales();
+}
+
+let _ultimoMovimiento = Date.now();
+function vigilarInactividad(){
+  ['click','keydown','touchstart','scroll'].forEach(ev=>document.addEventListener(ev, ()=>{ _ultimoMovimiento = Date.now(); }, {passive:true}));
+  setInterval(()=>{
+    if (ESTADO.usuario && Date.now()-_ultimoMovimiento > MINUTOS_INACTIVIDAD*60000) salir(true);
+  }, 60000);
+}
+
+/* cambiar la contraseña: le llega el mismo correo de «restablecer» a su propia casilla */
+async function cambiarClave(){
+  try{ await fbAuth.sendPasswordResetEmail(ESTADO.usuario.id); toast('Te llegó un correo para elegir una contraseña nueva'); }
+  catch(e){ toast('No se pudo mandar el correo. Probá de nuevo.'); }
+}
+
+</script>
+<script>/* ── js/app.js ── */
+/* ══════════════ SESIÓN E INICIO ══════════════ */
+function cambiarLocal(v){ ESTADO.local=v; render(); }
+
+/* ══════════ elegir tienda ══════════ */
+function pintarTiendas(){
+  $('#tienda-cards').innerHTML = TIENDAS.map(t=>{
+    const col = t.tema['--terracota'];
+    const vs = Store.all('ventas').filter(v=>v.tienda===t.id);
+    const mes = vs.filter(v=>v.fecha>=hoyISO().slice(0,7)+'-01');
+    const ps  = Store.all('productos').filter(p=>!p.tienda || p.tienda===t.id);
+    return `<button class="tienda-card" style="border-top:4px solid ${col}" onclick="elegirTienda('${t.id}')">
+      <div class="marco">${logoHTML(t.id,'logo')}</div>
+      <h3>${esc(t.nombre)}</h3>
+      <div class="lem">${esc(t.lema)}</div>
+      <div class="dir">${esc(t.rubro)}</div>
+      <div class="datos">
+        <span class="chip linea">${esc(t.dir)}</span>
+        <span class="chip linea">${ps.length} artículos</span>
+        <span class="chip linea">${mes.length} ventas este mes</span>
+      </div>
+      <span class="btn entrar" style="background:${col};border-color:${col}">Entrar a ${esc(t.nombre)} →</span>
+    </button>`;
+  }).join('');
+}
+function elegirTienda(id){
+  ESTADO.tienda = id;
+  ESTADO.local = 'TODOS';
+  aplicarTema(id);
+  /* en la página real ya se sabe quién es (entró con su correo): pasa directo */
+  if (!MODO_DEMO){ entrar(ESTADO.usuario.id); return; }
+  const t = tienda(id);
+  $('#elegir').classList.add('oculto');
+  $('#ingreso').classList.remove('oculto');
+  $('#ing-logo').innerHTML = logoHTML(id,'logo');
+  $('#ing-lema').textContent = t.lema;
+  $('#ing-tit').innerHTML = 'Tu tienda, <em>ordenada</em>.';
+  $('#ing-txt').textContent = t.intro;
+  $('#ing-users').innerHTML = usuariasActivas().map(u=>`
+    <button class="ing-user" onclick="entrar('${u.id}')">
+      <span class="avatar ${colorTexto(u.nombre.length)}">${inicial(u.nombre)}</span>
+      <span><b>${esc(u.nombre)}</b><span>${esc(u.rol)}${u.local?' · '+localNom(u.local):' · ve las dos tiendas'}</span></span>
+      <span class="flecha">→</span></button>`).join('');
+  window.scrollTo({top:0});
+}
+function volverAElegir(){
+  cerrarModal();
+  ESTADO.usuario = null;
+  $('#app').classList.add('oculto');
+  $('#ingreso').classList.add('oculto');
+  $('#elegir').classList.remove('oculto');
+  pintarTiendas();
+}
+/* cambiar de tienda sin salir del sistema (solo la dueña) */
+function saltarATienda(id){
+  ESTADO.tienda = id; ESTADO.local = 'TODOS'; ESTADO.vista='panel'; ESTADO.sub=''; ESTADO.filtros={};
+  aplicarTema(id); cerrarModal(); pintarEncabezado(); render();
+  toast('Estás en '+tiendaNom(id));
+}
+function pintarEncabezado(){
+  const t = tienda();
+  $('#top-marca').innerHTML = logoHTML(t.id,'logo') +
+    `<div class="txt"><b>${esc(t.nombre)}</b><span>${esc(t.sub)}</span></div>`;
+  $('#btn-tienda-txt').textContent = otraTienda().nombre;
+  $('#sel-local').innerHTML = `<option value="TODOS">Toda la tienda</option>` +
+    locales().map(l=>`<option value="${l.id}" ${ESTADO.local===l.id?'selected':''}>${esc(l.nombre)}</option>`).join('');
+  const sinLeer = T('avisos').filter(a=>!a.leido).length;
+  $('#campana').innerHTML = '✉' + (sinLeer? `<span class="cuenta">${sinLeer}</span>`:'');
+  // la dueña salta de una tienda a la otra; las empleadas vuelven al inicio
+  $('#btn-tienda').onclick = ()=> ESTADO.usuario && !ESTADO.usuario.tienda ? saltarATienda(otraTienda().id) : volverAElegir();
+}
+
+/* ══════════ avisos entre tiendas ══════════ */
+function nuevoAviso(tiendaDestino, texto){
+  Store.upsert('avisos', {tienda:tiendaDestino, texto, fecha:hoyISO(),
+    hora:String(hoy().getHours()).padStart(2,'0')+':'+String(hoy().getMinutes()).padStart(2,'0'), leido:false});
+}
+function verAvisos(){
+  const av = T('avisos').sort((a,b)=>(a.fecha+a.hora)<(b.fecha+b.hora)?1:-1);
+  abrirModal(`<div class="m-cab"><div><h3>Avisos de ${esc(tienda().nombre)}</h3>
+      <div class="sub">Lo que pasó en la tienda y lo que llegó de la otra</div></div>
+      <div class="x"><button class="ico-btn" onclick="cerrarModal()">✕</button></div></div>
+    <div class="m-cuerpo">
+      ${av.length? av.map(a=>`<div class="aviso-fila ${a.leido?'':'nuevo'}">
+        <span class="pun" style="background:${a.leido?'var(--tinta-3)':'var(--ceibo)'};margin-top:6px"></span>
+        <div style="flex:1"><b>${esc(a.texto)}</b>
+          <div class="mini">${dmy(a.fecha)} · ${esc(a.hora)}</div></div></div>`).join('')
+        : vacio('No hay avisos','✓')}
+    </div>
+    <div class="m-pie">
+      ${av.some(a=>!a.leido)?`<button class="btn sec izq" onclick="marcarAvisos()">Marcar todo como leído</button>`:''}
+      <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'angosto');
+}
+function marcarAvisos(){
+  T('avisos').forEach(a=>{ a.leido=true; Store.upsert('avisos',a); });
+  cerrarModal(); pintarEncabezado(); toast('Avisos leídos');
+}
+
+function menuUsuario(){
+  const puedeCambiar = ESTADO.usuario && !ESTADO.usuario.tienda;
+  abrirModal(`<div class="m-cab"><div><h3>${esc(ESTADO.usuario.nombre)}</h3>
+      <div class="sub">${esc(ESTADO.usuario.rol)} · ${esc(tienda().nombre)}${ESTADO.usuario.local?' · '+localNom(ESTADO.usuario.local):''}</div></div>
+      <div class="x"><button class="ico-btn" onclick="cerrarModal()">✕</button></div></div>
+    <div class="m-cuerpo">
+      ${MODO_DEMO ? `<div class="aviso"><span class="em">◐</span><div>Estás viendo la página como <b>${esc(ESTADO.usuario.rol)}</b>.
+        Probá entrar como otra persona para ver cómo cambia lo que se muestra.</div></div>`
+        : `<div class="mini">Entraste con <b>${esc(ESTADO.usuario.id)}</b>.</div>
+        <button class="btn sec chico" style="margin-top:10px" onclick="cambiarClave()">Cambiar mi contraseña</button>`}
+      ${puedeCambiar?`<div class="etiqueta" style="margin:16px 0 8px">Cambiar de tienda</div>
+        <div class="lista">${TIENDAS.map(t=>`<div class="it">
+          <span class="pun" style="background:${t.id==='FDC'?'#A0531E':'#DE8C7C'}"></span>
+          <div class="txt"><b>${esc(t.nombre)}</b><span>${esc(t.dir)}</span></div>
+          <div class="fin">${t.id===ESTADO.tienda?'<span class="chip ok">acá estás</span>'
+            :`<button class="btn chico sec" onclick="saltarATienda('${t.id}')">Ir</button>`}</div></div>`).join('')}</div>`:''}
+      ${MODO_DEMO ? `<div class="etiqueta" style="margin:16px 0 8px">Quién entra</div>
+      <div class="lista">
+        ${usuariasActivas().map(u=>`<div class="it">
+          <span class="avatar ${colorTexto(u.nombre.length)}">${inicial(u.nombre)}</span>
+          <div class="txt"><b>${esc(u.nombre)}</b><span>${esc(u.rol)}${u.local?' · '+localNom(u.local):' · las dos tiendas'}</span></div>
+          <div class="fin">${u.id===ESTADO.usuario.id?'<span class="chip ok">vos</span>'
+            :`<button class="btn chico sec" onclick="entrar('${u.id}')">Entrar como ella</button>`}</div></div>`).join('')}
+      </div>` : ''}</div>
+    <div class="m-pie"><button class="btn sec izq" onclick="salir()">Cerrar sesión</button>
+      <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'angosto');
+}
+function entrar(id){
+  /* el soporte de Wydan no está en la lista de usuarias: se queda con el que ya tiene */
+  const u = usuario(id).id ? usuario(id) : ESTADO.usuario; ESTADO.usuario = u;
+  if(u.tienda && u.tienda!==ESTADO.tienda){ ESTADO.tienda = u.tienda; aplicarTema(u.tienda); }
+  ESTADO.local = 'TODOS';
+  $('#elegir').classList.add('oculto');
+  $('#ingreso').classList.add('oculto');
+  $('#app').classList.remove('oculto');
+  $('#u-nombre').textContent = u.nombre.split(' ')[0];
+  $('#u-rol').textContent = u.rol;
+  $('#u-avatar').textContent = inicial(u.nombre);
+  $('#u-avatar').className = 'avatar '+colorTexto(u.nombre.length);
+  pintarEncabezado();
+  cerrarModal();
+  if(!puede(ESTADO.vista)) ESTADO.vista='panel';
+  render();
+}
+function salir(porInactividad){
+  if (!MODO_DEMO){
+    cerrarModal();
+    SyncManager.flush().then(()=>SyncManager.disconnect()).then(()=>fbAuth.signOut()).then(()=>{
+      if (porInactividad) sessionStorage.setItem('fdc_motivo','Se cerró la sesión por inactividad');
+      location.reload();
+    });
+    return;
+  }
+  cerrarModal(); ESTADO.usuario=null;
+  $('#app').classList.add('oculto'); $('#ingreso').classList.add('oculto');
+  $('#elegir').classList.remove('oculto'); pintarTiendas();
+}
+function reiniciarDemo(){
+  if(!MODO_DEMO) return;
+  if(!confirm('Esto borra todo lo que cargaste y vuelve a los datos de ejemplo. ¿Seguimos?')) return;
+  Repo.borrar(); DB = generarHistorial(semilla()); asegurarColecciones(); migrarStockUnico(DB); migrarEtiquetas(); sembrarMensajes(); MSJ.texto=null; Repo.guardar(DB); aplicarListas(); aplicarLocales(); STK_SEL.clear();
+  toast('Demostración reiniciada'); render();
+}
+function iniciar(){
+  ajustesGraficos();
+  if (!MODO_DEMO){
+    /* página real: primero el ingreso con correo y contraseña; los datos llegan de la nube */
+    fbInit();
+    const motivo = sessionStorage.getItem('fdc_motivo'); sessionStorage.removeItem('fdc_motivo');
+    mostrarLogin(motivo || '');
+    fbAuth.onAuthStateChanged(user=>{ if (user) alIngresar(user); else mostrarLogin(motivo || ''); });
+    return;
+  }
+  DB = Repo.leer();
+  if(!DB || !DB.ventas || !DB.ventas.length){ DB = generarHistorial(semilla()); Repo.guardar(DB); }
+  DB.cfg = DB.cfg || {};
+  asegurarColecciones();
+  if(migrarStockUnico(DB)) Repo.guardar(DB);
+  migrarEtiquetas();
+  sembrarMensajes();
+  aplicarListas();
+  aplicarLocales();
+  aplicarTema('FDC');
+  pintarTiendas();
+}
+function ajustesGraficos(){
+  if(window.Chart){
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+    Chart.defaults.font.size = 11.5;
+    Chart.defaults.color = '#6B5C4F';
+    Chart.defaults.plugins.tooltip.backgroundColor = '#2B2119';
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = {family:"'Inter'", weight:'600'};
+  }
+}
+iniciar();
+
 </script>
 </body>
 </html>
