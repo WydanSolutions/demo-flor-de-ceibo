@@ -3072,7 +3072,7 @@ function fichaProducto(id){
    Con una credencial de escritura, el motor lo corrige solo y esta lista queda vacía. */
 function difWeb(){
   return T('productos').filter(p=>p.activo!==false && p.web && typeof p.web.stock==='number' && p.web.controla!==false
-    && p.web.stock !== stockTotal(p));
+    && p.web.stock !== Math.max(0, stockTotal(p)));
 }
 function paraCorregirWeb(){
   if(!puede('editStock')) return '';                 // lo corrige quien maneja el stock
@@ -3085,14 +3085,14 @@ function paraCorregirWeb(){
       ${ds.slice(0,40).map(p=>`<tr>
         <td data-l="Prenda" class="principal">${lineaProd(p, esc(p.cod))}</td>
         <td data-l="La web dice" class="cen">${p.web.stock}</td>
-        <td data-l="Poné" class="cen"><b>${stockTotal(p)}</b></td>
+        <td data-l="Poné" class="cen"><b>${Math.max(0, stockTotal(p))}</b>${stockTotal(p)<0?`<div><span class="chip al" title="Se vendió en el local y en la web a la vez">se vendió ${-stockTotal(p)} de más</span></div>`:''}</td>
         <td class="der"><button class="btn chico sec" onclick="webCorregido('${p.id}')">Ya lo corregí</button></td></tr>`).join('')}
     </tbody></table></div>${ds.length>40?`<div class="mini" style="padding:8px">y ${ds.length-40} más</div>`:''}`,
     {clase:'mt', sub: ds.length+' prenda'+(ds.length>1?'s':'')+' con otro número en la web'});
 }
 function webCorregido(id){
   const p = prod(id); if(!p.id || !p.web) return;
-  p.web = Object.assign({}, p.web, {stock: stockTotal(p)}); Store.upsert('productos', p);
+  p.web = Object.assign({}, p.web, {stock: Math.max(0, stockTotal(p))}); Store.upsert('productos', p);
   toast('Anotado. El motor lo confirma en la próxima vuelta.'); render();
 }
 
