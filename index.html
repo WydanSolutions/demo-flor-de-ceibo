@@ -691,6 +691,9 @@ const LOCALES = [
    true  → un solo stock para las dos tiendas y la web: cada talle tiene UN número (p.stk.U)
            y el campo «¿Dónde está?» dice en qué tienda está la prenda.
    false → (demo público) cada tienda tiene su local y su tienda online por separado. */
+/* MODO_DEMO: true = demostración (datos de ejemplo en el navegador, botón para reiniciar).
+   En la página real va en false: arranca vacía y los datos viven en la nube. */
+const MODO_DEMO = true;
 let STOCK_UNICO = true;    /* decisión de la clienta (05/11/2026): un solo stock para las dos tiendas y la web */
 
 const CANALES  = ['Salón','WhatsApp','Instagram','Tienda web','Desfile / evento'];
@@ -2316,8 +2319,7 @@ VISTAS.stock = function(){
 
   ${STOCK_UNICO ? avisoStockUnico() : `<div class="aviso" style="margin-bottom:16px"><span class="em">✦</span><div>
     <b>El local y la tienda online, en una sola planilla.</b> Cuánto hay de cada talle, dónde está y qué conviene pedir.
-    Con el botón «Traslados» podés mover mercadería al local de <b>${esc(otraTienda().nombre)}</b> y le llega el aviso.
-    <span class="mini">En el demo los números son inventados; al conectar la tienda online se sincronizan solos.</span></div></div>`}
+    Con el botón «Traslados» podés mover mercadería al local de <b>${esc(otraTienda().nombre)}</b> y le llega el aviso.</div></div>`}
 
   <div class="grid g5">
     ${kpi({tit:'Artículos', val:ps.length, pie:`<span>${new Set(ps.map(p=>p.modelo)).size} modelos en ${new Set(ps.map(p=>p.cat)).size} categorías</span>`})}
@@ -3975,63 +3977,48 @@ VISTAS.config = function(){
   </div>
 
   <div class="grid g2 mt">
-    ${card('Se conecta en la segunda etapa', `
-      <div class="lista">
-        ${[['WhatsApp Business API','Para mandar las campañas de una sola vez, sin ir uno por uno. Es un servicio pago de Meta.'],
-           ['Instagram, Facebook y TikTok','Para que los seguidores, el alcance y la interacción se actualicen solos.'],
-           ['Tienda online','Para que el stock de la web y el de los locales sean el mismo número.'],
-           ['Facturación electrónica','Si tu sistema lo permite, la venta cargada acá se factura sola. Si no, se importa la planilla.'],
-           ['Respaldo automático','Una copia de todos los datos, todos los días, a un lugar seguro.']].map(x=>`
-          <div class="it"><span class="pun" style="background:var(--tinta-3)"></span>
-            <div class="txt"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>
-            <div class="fin"><span class="chip linea">2ª etapa</span></div></div>`).join('')}
-      </div>`, {sub:'Lo que hoy está simulado y se puede enchufar de verdad'})}
-
+    ${card('Conexiones', tarjetaConexiones(), {sub:'Con qué está conectada la página'})}
     ${card('Tus datos', `
-      <div class="aviso"><span class="em">✦</span><div>
-        Todo lo que ves acá son <b>datos inventados</b> para la demostración y viven solamente en este navegador.
-        En la versión real, los datos quedan en la nube, con respaldo, y se puede entrar desde cualquier lugar.</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      ${MODO_DEMO ? `<div class="aviso" style="margin-bottom:14px"><span class="em">✦</span><div>Estás en la
+        <b>demostración</b>: los datos son de ejemplo y viven solo en este navegador.</div></div>` : ''}
+      <div class="mini" style="margin-bottom:10px">Descargá en Excel lo que necesites, cuando quieras.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn sec" onclick="exportarClientas()">⤓ Clientes</button>
         <button class="btn sec" onclick="exportarStock()">⤓ Stock</button>
         <button class="btn sec" onclick="exportarVentas()">⤓ Ventas</button>
         <button class="btn sec" onclick="exportarIngresos()">⤓ Compras</button>
+        <button class="btn sec" onclick="exportarGastos()">⤓ Gastos</button>
       </div>
-      <div style="margin-top:18px;border-top:1px solid var(--linea);padding-top:14px">
+      ${MODO_DEMO ? `<div style="margin-top:18px;border-top:1px solid var(--linea);padding-top:14px">
         <div class="etiqueta" style="margin-bottom:8px">Volver a empezar</div>
-        <div class="mini" style="margin-bottom:10px">Borra todo lo que cargaste en la demostración y deja los datos de ejemplo como al principio.</div>
-        <button class="btn ceibo" onclick="reiniciarDemo()">Reiniciar la demostración</button>
-      </div>`)}
+        <div class="mini" style="margin-bottom:10px">Borra lo que cargaste y deja los datos de ejemplo como al principio.</div>
+        <button class="btn ceibo" onclick="reiniciarDemo()">Reiniciar la demostración</button></div>` : ''}`)}
   </div>
 
   ${tarjetaListas()}
 
-  ${card('Sobre esta demostración', `
-    <div class="grid g3" style="gap:14px">
-      <div><div class="etiqueta" style="margin-bottom:6px">Funciona de verdad</div>
-        <ul class="mini" style="margin:0;padding-left:18px;line-height:1.8">
-          <li>Cargar ventas, clientes, productos, proveedores e ingresos</li>
-          <li>Todos los cálculos: ticket, márgenes, comisiones, cuentas corrientes</li>
-          <li>Segmentos de clientes y armado de campañas</li>
-          <li>Envío asistido de WhatsApp (abre el chat con el texto pronto)</li>
-          <li>Cruce entre publicaciones y ventas</li>
-        </ul></div>
-      <div><div class="etiqueta" style="margin-bottom:6px">Está simulado</div>
-        <ul class="mini" style="margin:0;padding-left:18px;line-height:1.8">
-          <li>Los números de Instagram, Facebook y TikTok</li>
-          <li>El rendimiento de la publicidad paga</li>
-          <li>El stock de la tienda online</li>
-        </ul></div>
-      <div><div class="etiqueta" style="margin-bottom:6px">Requiere contratar aparte</div>
-        <ul class="mini" style="margin:0;padding-left:18px;line-height:1.8">
-          <li>El envío masivo automático por WhatsApp (API de Meta)</li>
-          <li>La conexión con las redes en vivo</li>
-          <li>La conexión con el sistema de facturación</li>
-        </ul></div>
-    </div>
-    <div class="ing-pie" style="margin-top:20px">Desarrollado por <b style="color:var(--tinta-2);letter-spacing:.1em">WYDAN SOLUTIONS</b>
-      · páginas de gestión a medida · ${CFG.version}</div>`, {clase:'mt'})}`;
+  <div class="ing-pie" style="margin-top:22px;justify-content:center">Desarrollado por
+    <b style="color:var(--tinta-2);letter-spacing:.1em">WYDAN SOLUTIONS</b> · ${esc(CFG.version)}</div>`;
 };
+
+/* ── Conexiones: lo que está enchufado de verdad ──
+   cfg.sync lo escribe la sincronización con la tienda web (Apps Script) cada vez que corre:
+   {ultima:'aaaa-mm-ddThh:mm', error:''}. */
+function tarjetaConexiones(){
+  const s = Store.cfg('sync') || {};
+  const web = MODO_DEMO ? ['En la demostración no está conectada.', 'linea', 'demostración']
+    : s.ultima ? ['Última actualización: '+dmy(s.ultima.slice(0,10))+' a las '+s.ultima.slice(11,16)+(s.error?' · hubo un problema: '+s.error:''),
+                  s.error ? 'mal' : 'ok', s.error ? 'revisar' : 'conectada']
+    : ['Todavía no se sincronizó.', 'al', 'pendiente'];
+  const fila = (tit, txt, det, cls, chip) => `<div class="it"><span class="pun" style="background:var(--${cls==='ok'?'ok':cls==='mal'?'mal':cls==='al'?'alerta':'tinta-3'})"></span>
+    <div class="txt"><b>${esc(tit)}</b><span>${esc(txt)}</span>${det?`<span style="display:block;margin-top:2px">${esc(det)}</span>`:''}</div>
+    <div class="fin"><span class="chip ${cls}">${esc(chip)}</span></div></div>`;
+  return `<div class="lista">
+    ${fila('Tienda web (Urutienda)', 'Un solo stock: cada venta de la web se descuenta acá y cada cambio de acá se manda a la web, cada pocos minutos.', web[0], web[1], web[2])}
+    ${fila('WhatsApp', 'Los mensajes salen desde tu propio WhatsApp, uno a uno, con el texto listo para enviar.', '', 'ok', 'lista')}
+    ${fila('Respaldo semanal', 'Todas las semanas te llega por correo una copia de tus datos en Excel.', '', MODO_DEMO?'linea':'ok', MODO_DEMO?'demostración':'activo')}
+  </div>`;
+}
 
 /* ── Listas editables ── */
 const _LISTAS_BASE = {};
@@ -5870,6 +5857,7 @@ function salir(){
   $('#elegir').classList.remove('oculto'); pintarTiendas();
 }
 function reiniciarDemo(){
+  if(!MODO_DEMO) return;
   if(!confirm('Esto borra todo lo que cargaste y vuelve a los datos de ejemplo. ¿Seguimos?')) return;
   Repo.borrar(); DB = generarHistorial(semilla()); asegurarColecciones(); migrarStockUnico(DB); migrarEtiquetas(); sembrarMensajes(); MSJ.texto=null; Repo.guardar(DB); aplicarListas(); aplicarLocales(); STK_SEL.clear();
   toast('Demostración reiniciada'); render();
