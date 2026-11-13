@@ -565,8 +565,8 @@ details.plegable[open] > summary::before{content:'▾ ';}
 <div id="elegir">
   <div class="filo"></div>
   <h1>¿A qué <em>tienda</em> entrás?</h1>
-  <div class="p">Cada tienda tiene su stock, sus ventas y sus redes. Los clientes y los proveedores
-    son los mismos para las dos.</div>
+  <div class="p">Cada tienda tiene sus ventas y sus redes. El <b>stock es uno solo</b> para las dos y la tienda web,
+    y los clientes y los proveedores también son los mismos.</div>
   <div class="tienda-cards" id="tienda-cards"></div>
 </div>
 
@@ -691,7 +691,7 @@ const LOCALES = [
    true  → un solo stock para las dos tiendas y la web: cada talle tiene UN número (p.stk.U)
            y el campo «¿Dónde está?» dice en qué tienda está la prenda.
    false → (demo público) cada tienda tiene su local y su tienda online por separado. */
-let STOCK_UNICO = false;
+let STOCK_UNICO = true;    /* decisión de la clienta (05/11/2026): un solo stock para las dos tiendas y la web */
 
 const CANALES  = ['Salón','WhatsApp','Instagram','Tienda web','Desfile / evento'];
 const MEDIOS   = ['Efectivo','Débito','Crédito','Transferencia','Fiado'];
@@ -711,6 +711,10 @@ const TEMPS = {
 const TEMPORADAS = ['Invierno 2026','Otoño 2026','Primavera 2026','Verano 25/26','Atemporal'];
 const cats = () => STOCK_UNICO ? CATS.FDC : (CATS[ESTADO.tienda] || CATS.FDC);
 const cols = () => STOCK_UNICO ? COLS.FDC : (COLS[ESTADO.tienda] || COLS.FDC);
+/* los datos de ejemplo eligen la colección por posición: se guardan las listas originales de cada tienda */
+const COLS_DEMO = {FDC:COLS.FDC.slice(), TEV:COLS.TEV.slice()};
+/* con stock único las prendas de las dos tiendas están juntas: categorías y colecciones también */
+if(STOCK_UNICO) [CATS, COLS].forEach(o=>{ const u = [...new Set(o.FDC.concat(o.TEV))]; o.FDC.splice(0, o.FDC.length, ...u); o.TEV.splice(0, o.TEV.length, ...u); });
 const TALLES = ['XS','S','M','L','XL','36','38','40','42','44','Único'];
 const COLORES = [
   {n:'Terracota', h:'#A0531E'}, {n:'Camel', h:'#B98B58'}, {n:'Crudo', h:'#EFE4D4'},
@@ -1116,7 +1120,7 @@ function semilla(){
         const stON = Math.round(pesado([[0,20],[1,22],[2,18],[3,12],[4,8],[6,4]])*carga);
         db.productos.push({
           id:'p'+np, tienda:t.id, cod:t.id+'-'+String(mi+1).padStart(2,'0')+'-'+ta,
-          nombre:m[0], modelo:t.id+'m'+(mi+1), cat:m[1], coleccion:COLS[t.id][m[2]],
+          nombre:m[0], modelo:t.id+'m'+(mi+1), cat:m[1], coleccion:COLS_DEMO[t.id][m[2]],
           temporada:TEMPS[t.id][m[2]], color:m[3], talle:ta, costo:m[4], precio:m[5],
           stk: t.id==='FDC' ? {L1:stL, ON1:stON} : {L2:stL, ON2:stON},
           min:2, prov:m[7], activo:true,
@@ -5111,6 +5115,22 @@ function chipEtq(e, extra){
   const col = e.color || '#8C7E70';
   return `<span class="etq-chip" style="background:${col}1F;color:${col};border-color:${col}55">${esc(e.nombre)}${extra||''}</span>`;
 }
+/* Con stock único cada prenda tiene UN número (stk.U) y la ven las dos tiendas. Los datos de ejemplo se
+   arman por tienda (local + online) y las copias viejas del demo también: acá se juntan, sin perder unidades.
+   La tienda pasa a ser la «marca» de la prenda y, si no tenía lugar, «¿Dónde está?» arranca en esa tienda. */
+function migrarStockUnico(db){
+  if(!STOCK_UNICO) return false;
+  let cambio = false;
+  (db.productos||[]).forEach(p=>{
+    const ks = Object.keys(p.stk||{});
+    if(!p.tienda && !ks.some(k=>k!=='U')) return;
+    p.stk = {U: ks.reduce((a,k)=>a+(+p.stk[k]||0), 0)};
+    if(p.tienda){ p.marca = p.marca || p.tienda; if(!p.ubic) p.ubic = tiendaNom(p.tienda); delete p.tienda; }
+    if(p.min==null) p.min = 2;
+    cambio = true;
+  });
+  return cambio;
+}
 /* Los datos viejos guardaban las etiquetas como texto: se pasan a la colección, sin perder ninguna. */
 function migrarEtiquetas(){
   if(!Array.isArray(DB.etiquetas)) DB.etiquetas = [];
@@ -5851,7 +5871,7 @@ function salir(){
 }
 function reiniciarDemo(){
   if(!confirm('Esto borra todo lo que cargaste y vuelve a los datos de ejemplo. ¿Seguimos?')) return;
-  Repo.borrar(); DB = generarHistorial(semilla()); asegurarColecciones(); migrarEtiquetas(); sembrarMensajes(); MSJ.texto=null; Repo.guardar(DB); aplicarListas(); aplicarLocales(); STK_SEL.clear();
+  Repo.borrar(); DB = generarHistorial(semilla()); asegurarColecciones(); migrarStockUnico(DB); migrarEtiquetas(); sembrarMensajes(); MSJ.texto=null; Repo.guardar(DB); aplicarListas(); aplicarLocales(); STK_SEL.clear();
   toast('Demostración reiniciada'); render();
 }
 function iniciar(){
@@ -5859,6 +5879,7 @@ function iniciar(){
   if(!DB || !DB.ventas || !DB.ventas.length){ DB = generarHistorial(semilla()); Repo.guardar(DB); }
   DB.cfg = DB.cfg || {};
   asegurarColecciones();
+  if(migrarStockUnico(DB)) Repo.guardar(DB);
   migrarEtiquetas();
   sembrarMensajes();
   aplicarListas();
