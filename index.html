@@ -902,6 +902,9 @@ function fbInit(){
   if (MODO_DEMO || fbDb) return;
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth(); fbAuth.languageCode = 'es';
+  /* la sesión dura lo que la pestaña: al cerrar el navegador pide usuario y contraseña de nuevo
+     (en una computadora del local, que la use otra persona no la deja entrar con la sesión de la anterior) */
+  fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(() => {});
   fbDb = firebase.firestore();
   /* undefined no viaja (Firestore lo rechazaría): los campos sin valor simplemente no se guardan */
   fbDb.settings({ ignoreUndefinedProperties: true, merge: true });
@@ -5859,7 +5862,12 @@ function formUsuario(id){
           Store.upsert('usuarios', Object.assign(d, {id:correo, claveProvisoria:true}));
           cerrarModal(); render();
           toast('Listo: '+d.nombre.split(' ')[0]+' entra con el usuario «'+usr+'» y la contraseña que le pusiste. La primera vez elige la suya.');
-        }).catch(e=>{ toast(e.message); if(b){ b.disabled = false; b.textContent = 'Guardar'; } });
+        }).catch(e=>{
+          /* el error queda escrito en la ventana (un aviso que se va solo no alcanza para leerlo) */
+          const c = $('#modales .m-cuerpo');
+          if(c){ let a = $('#usr-err'); if(!a){ c.insertAdjacentHTML('afterbegin', '<div id="usr-err" class="aviso al" style="margin-bottom:12px"></div>'); a = $('#usr-err'); }
+            a.textContent = 'No se pudo crear: '+e.message; c.scrollTop = 0; }
+          if(b){ b.disabled = false; b.textContent = 'Guardar'; } });
         return false;
       }
       delete d.usuario; delete d.clave;
@@ -7447,6 +7455,7 @@ const MINUTOS_INACTIVIDAD = 30;
 const MIN_CLAVE = 8;
 
 function mostrarLogin(msg){
+  ocultarCargando();
   $('#elegir').classList.add('oculto'); $('#ingreso').classList.add('oculto'); $('#app').classList.add('oculto');
   $('#login').classList.remove('oculto');
   $('#login-logo').innerHTML = logoHTML('FDC','logo') + logoHTML('TEV','logo');
@@ -7764,7 +7773,8 @@ function iniciar(){
     /* página real: primero el ingreso con correo y contraseña; los datos llegan de la nube */
     fbInit();
     const motivo = sessionStorage.getItem('fdc_motivo'); sessionStorage.removeItem('fdc_motivo');
-    mostrarLogin(motivo || '');
+    /* mientras Firebase se fija si ya hay una sesión abierta, no se muestra el formulario (parecía que no dejaba escribir) */
+    mostrarCargando();
     fbAuth.onAuthStateChanged(user=>{ if (user) alIngresar(user); else mostrarLogin(motivo || ''); });
     return;
   }
