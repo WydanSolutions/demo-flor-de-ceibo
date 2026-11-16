@@ -1152,12 +1152,14 @@ const SyncManager={
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════ 1. CONFIGURACIÓN Y CATÁLOGOS ═══════════ */
+/* fecha de la versión publicada (se ve al pie de Configuración). Cambiarla al publicar una versión nueva. */
+const VERSION_PAGINA = '2026-11-16';
 const CFG = {
   negocio:'Flor de Ceibo',
   duena:'Vale Campos',
   lema:'Raíces uruguayas · Elegancia sin fronteras',
   instagram:'flordeceibobyvalecampos',
-  version:'demo-2026-10-23',
+  version:'demo-2026-10-23',   // solo para la demostración: es la clave con que guarda sus datos en el navegador (no cambiar)
   moneda:'$',                 // pesos uruguayos
   dolar:41.20,                // cotización de referencia (se edita en Configuración)
   real:7.55,
@@ -4724,7 +4726,7 @@ VISTAS.config = function(){
   ${tarjetaListas()}
 
   <div class="ing-pie" style="margin-top:22px;justify-content:center">Desarrollado por
-    <b style="color:var(--tinta-2);letter-spacing:.1em">WYDAN SOLUTIONS</b> · ${esc(CFG.version)}</div>`;
+    <b style="color:var(--tinta-2);letter-spacing:.1em">WYDAN SOLUTIONS</b> · ${MODO_DEMO ? 'demostración' : 'versión '+dmy(VERSION_PAGINA)}</div>`;
 };
 
 /* ── Conexiones: lo que está enchufado de verdad ──
