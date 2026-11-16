@@ -757,6 +757,18 @@ button.chip{border:0;cursor:pointer}
   .meta-anillo{width:70px;height:70px}
 }
 
+/* ── celular: campos de 16 px (si son más chicos el iPhone agranda la pantalla solo al tocarlos)
+      y todo lo que se toca con el dedo de al menos 36 px de alto ── */
+@media (max-width:700px){
+  input:not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea,.cell-in,.sel-local,
+  .barra-sel select{font-size:16px !important}
+  .btn.chico,.ico-btn,.btn-tienda,.campana,.top-user{min-height:36px}
+  .ico-btn,.campana{min-width:36px}
+  button.chip{min-height:34px;padding:6px 12px}
+  .seg button{min-height:36px}
+  input[type=checkbox],input[type=radio]{width:20px;height:20px}
+}
+
 /* ── «reducir movimiento»: nada se mueve ── */
 @media (prefers-reduced-motion:reduce){
   #vista.entra *,.filo::after,.carg-marca,.esq,.meta-anillo .avance{animation:none !important}
@@ -896,6 +908,10 @@ function fbInit(){
  * listeners, dirty/saving, debounce, retries, batches y huellas sincronizadas.
  *
  * No conoce reglas de negocio ni estructura de entidades: todo eso entra por callbacks.
+ *
+ * 16/11/2026: si las reglas rechazan UN documento de un lote, antes fallaba el lote entero y, como se
+ * reintentaba igual, no se guardaba nada más (ni una venta). Ahora el lote se reintenta de a un documento:
+ * se guarda todo lo permitido y el rechazado queda aparte (_rechazados) hasta que vuelva a cambiar.
  */
 
 const SyncManager={
@@ -908,6 +924,7 @@ const SyncManager={
   _rev:0,
   _inflight:null,
   _unsubs:[],
+  _rechazados:new Map(),        // documento → huella que las reglas rechazaron (no se reintenta igual)
 
   configure(opts){ this._opts=opts||{}; },
   revision(){ return this._rev||0; },
@@ -992,6 +1009,7 @@ const SyncManager={
     this._unsubs.forEach(u=>{ try{ u(); }catch(e){} });
     this._unsubs=[];
     this._synced.clear();
+    this._rechazados.clear();
     clearTimeout(this._timer); this._timer=null;
     clearTimeout(this._retryTimer); this._retryTimer=null;
     this._saving=false;
@@ -1024,18 +1042,20 @@ const SyncManager={
         const docs=o.getDocs?o.getDocs():new Map();
         const cambios=[];
 
+        const sl=o.isSoloLectura||(()=>false);     // lo que esta usuaria solo puede leer: ni se guarda ni se borra
         docs.forEach((doc,path)=>{
+          if(sl(path)) return;
           const s=this._fp(doc);
-          if(this._synced.get(path)!==s) cambios.push({p:path,o:doc,s:s});
+          if(this._synced.get(path)!==s && this._rechazados.get(path)!==s) cambios.push({p:path,o:doc,s:s});
         });
 
         this._synced.forEach((s,path)=>{
-          if(this._esDocSoloTransaccional(path)) return;
+          if(this._esDocSoloTransaccional(path) || sl(path)) return;
           if(!docs.has(path)) cambios.push({p:path,borrar:true});
         });
 
-        for(let i=0;i<cambios.length;i+=400){
-          const lote=cambios.slice(i,i+400);
+        const esRechazo=e=>/permission[-_ ]?denied/i.test(String((e&&(e.code||e.message))||''));
+        const guardarLote=async lote=>{
           const b=fbDb.batch();
           lote.forEach(c=>{
             const ref=fbDb.doc(c.p);
@@ -1046,7 +1066,25 @@ const SyncManager={
           lote.forEach(c=>{
             if(c.borrar) this._synced.delete(c.p);
             else this._synced.set(c.p,c.s);
+            this._rechazados.delete(c.p);
           });
+        };
+        const rechazos=[];
+        for(let i=0;i<cambios.length;i+=400){
+          const lote=cambios.slice(i,i+400);
+          try{ await guardarLote(lote); }
+          catch(e){
+            if(!esRechazo(e)) throw e;
+            /* las reglas rechazaron algo: de a uno, para que lo demás se guarde igual */
+            for(const c of lote){
+              try{ await guardarLote([c]); }
+              catch(e2){ if(!esRechazo(e2)) throw e2; rechazos.push(c.p); if(!c.borrar) this._rechazados.set(c.p,c.s); else this._synced.delete(c.p); }
+            }
+          }
+        }
+        if(rechazos.length){
+          console.warn('Las reglas no dejaron guardar:', rechazos);
+          if(o.onFlushResult) o.onFlushResult('error',{code:'permission-denied', docs:rechazos},true);
         }
 
         clearTimeout(this._retryTimer); this._retryTimer=null;
@@ -1057,8 +1095,8 @@ const SyncManager={
           try{ await o.onFlushConfirmed(revInicio); }
           catch(e){ console.error('Post flush',e); }
         }
-        if(o.onFlushResult) o.onFlushResult('ok');
-        return true;
+        if(!rechazos.length && o.onFlushResult) o.onFlushResult('ok');
+        return !rechazos.length;
       }catch(e){
         console.error('Guardar',e);
         /* ⚠ No todos los errores son iguales:
@@ -1353,6 +1391,16 @@ function canon(v){
   return v;
 }
 const huella = v => JSON.stringify(canon(v === undefined ? null : v));
+/* para comparar con la nube no cuenta el «id» (ya es el nombre del documento): lo que se escribe desde afuera
+   (el motor de la tienda web, la consola) no lo trae, y si contara la página creería que cambió y lo
+   volvería a guardar. 16/11/2026: eso trababa todo el guardado con webSync/estado. */
+const huellaDoc = v => { if (v && typeof v==='object' && !Array.isArray(v) && 'id' in v){ v = Object.assign({}, v); delete v.id; } return huella(v); };
+/* lo que esta usuaria solo puede leer: nunca se intenta guardar (las reglas lo rechazarían) */
+function soloLectura(col){
+  if (col==='webSync') return true;                           // lo escribe solo el motor de la tienda web
+  if (col==='usuarios') return !(ESTADO.usuario && (ESTADO.usuario.soporte || ESTADO.usuario.rol==='Dueña'));
+  return false;
+}
 
 const Repo = {
   clave:'flordeceibo_demo_' + CFG.version,
@@ -1468,7 +1516,8 @@ const Nube = {
     SyncManager.configure({
       cols: COLECCIONES,
       consulta: Nube.consulta,
-      fingerprint: huella,
+      fingerprint: huellaDoc,
+      isSoloLectura: p => soloLectura(p.split('/')[0]),
       getDocs: Nube.todos,
       getDoc: Nube.uno,
       applyRemotePut: Nube.poner,
@@ -3132,7 +3181,7 @@ function barraSelStock(){
       <option value="">Categoría …</option>${cats().map(u=>`<option>${esc(u)}</option>`).join('')}</select>
     <button class="btn sec chico" onclick="formEtqStock([...STK_SEL])">Etiquetas…</button>
     ${puede('precios')?'<button class="btn sec chico" onclick="formPrecioMasivo()">Precio…</button>':''}
-    ${puedeLista()?'<button class="btn sec chico" onclick="listaAgregar([...STK_SEL]); stkLimpiarSel()">＋ Lista de compras</button>':''}
+    ${puedeLista()?'<button class="btn sec chico" onclick="comprasAgregar([...STK_SEL]); stkLimpiarSel()">＋ Lista de compras</button>':''}
     <button class="btn sec chico" onclick="stkMasivo('liquidacion', true)">A liquidación</button>
     <button class="btn sec chico" onclick="stkMasivo('liquidacion', false)">Sacar de liquidación</button>
     ${enBajas?'<button class="btn sec chico" onclick="stkMasivo(\'activo\', true)">Volver a activar</button>'
@@ -3289,7 +3338,7 @@ function fichaProducto(id){
     </div>
     <div class="m-pie">
       ${STOCK_UNICO?'':`<button class="btn sec izq" onclick="formTraslado('${id}')">⇄ Mover entre locales</button>`}
-      ${puedeLista()?`<button class="btn sec" onclick="listaAgregar(['${id}'])">＋ Lista de compras</button>`:''}
+      ${puedeLista()?`<button class="btn sec" onclick="comprasAgregar(['${id}'])">＋ Lista de compras</button>`:''}
       ${puede('editStock')?`<button class="btn sec" onclick="formProducto('${id}')">✎ Editar</button>`:''}
       <button class="btn sec" onclick="cerrarModal()">Cerrar</button></div>`,'ancho');
 }
@@ -7115,12 +7164,12 @@ function tablaCandidatos(){
         <td data-l="Vendidas 60 d" class="cen">${v||'<span class="mini">—</span>'}</td>
         <td data-l="Proveedor"><span class="mini">${esc(p.prov?provNom(p.prov):'Sin proveedor')}</span></td>
         <td data-l="Sugerido" class="cen"><b>${sugeridoCompra(p)}</b></td>
-        <td class="der"><button class="btn chico sec" onclick="listaAgregar(['${p.id}'])" title="Pasar a la lista">＋ Lista</button></td></tr>`; }).join('')}
+        <td class="der"><button class="btn chico sec" onclick="comprasAgregar(['${p.id}'])" title="Pasar a la lista">＋ Lista</button></td></tr>`; }).join('')}
     </tbody></table></div>${ps.length>150?`<div class="mini" style="padding:10px">Se ven 150 de ${ps.length}. Usá el buscador o los filtros.</div>`:''}`;
 }
 function barraCandidatos(){
   const n = LC_SEL.size;
-  return n ? `<b>${n} marcada${n>1?'s':''}</b><button class="btn chico" onclick="listaAgregar([...LC_SEL])">＋ Pasar ${n} a la lista de compras</button>
+  return n ? `<b>${n} marcada${n>1?'s':''}</b><button class="btn chico" onclick="comprasAgregar([...LC_SEL])">＋ Pasar ${n} a la lista de compras</button>
     <button class="btn chico sec" onclick="LC_SEL.clear(); repintar('lc-cand', tablaCandidatos())">✕ Soltar</button>`
     : '<span class="mini">Marcá las prendas que querés pedir y pasalas a la lista.</span>';
 }
@@ -7128,7 +7177,7 @@ function lcMarcar(id, on, el){ on ? LC_SEL.add(id) : LC_SEL.delete(id); if(el) e
 function lcTodos(on){ candidatosCompra().slice(0,150).forEach(p=> on ? LC_SEL.add(p.id) : LC_SEL.delete(p.id)); repintar('lc-cand', tablaCandidatos()); }
 
 /* pasar prendas a la lista (desde «Para reponer», desde Stock o desde la ficha) */
-function listaAgregar(ids){
+function comprasAgregar(ids){
   if(!puedeLista()){ toast('No tenés permiso para la lista de compras'); return; }
   const ya = new Set(enLista().map(x=>x.prod)); let n = 0;
   ids.forEach(id=>{ const p = prod(id); if(!p.id || ya.has(id)) return;
@@ -7150,27 +7199,27 @@ function tablaListaCompras(){
       <div class="lc-cab"><div><b>${esc(g.prov ? pv.nombre||provNom(g.prov) : 'Sin proveedor asignado')}</b>
         <span class="mini">${plural(g.items.length,'prenda')} · ${plural(suma(g.items,x=>+x.cant||0),'unidad','unidades')}${vePlata()&&costo?' · ~'+money(costo)+' a costo':''}</span></div>
         <div class="acc">
-          ${pv.tel?`<button class="btn chico wa" onclick="listaWhatsApp('${g.prov}')">Mandar por WhatsApp</button>`:''}
-          ${g.prov && puede('proveedores')?`<button class="btn chico" onclick="listaLlego('${g.prov}')">Llegó → cargar la compra</button>`:''}</div></div>
+          ${pv.tel?`<button class="btn chico wa" onclick="comprasWhatsApp('${g.prov}')">Mandar por WhatsApp</button>`:''}
+          ${g.prov && puede('proveedores')?`<button class="btn chico" onclick="comprasLlego('${g.prov}')">Llegó → cargar la compra</button>`:''}</div></div>
       <div class="tabla-wrap"><table class="t resp"><thead><tr><th>Prenda</th><th class="cen">Hay</th><th class="cen">A pedir</th>
         <th>Nota</th><th class="cen">Estado</th><th class="der"></th></tr></thead><tbody>
         ${g.items.map(x=>{ const p = prod(x.prod), t = stockTotal(p); return `<tr>
           <td data-l="Prenda" class="principal">${lineaProd(p, esc(p.cod||''))}</td>
           <td data-l="Hay" class="cen">${numStock(t)}</td>
-          <td data-l="A pedir" class="cen"><input class="cell-in cant" type="number" min="1" value="${+x.cant||1}" onchange="listaCampo('${x.id}','cant',Math.max(1,Math.round(+this.value||1)))"></td>
-          <td data-l="Nota"><input class="cell-in" style="min-width:140px" placeholder="color, modelo…" value="${esc(x.nota||'')}" onchange="listaCampo('${x.id}','nota',this.value.trim())"></td>
+          <td data-l="A pedir" class="cen"><input class="cell-in cant" type="number" min="1" value="${+x.cant||1}" onchange="comprasCampo('${x.id}','cant',Math.max(1,Math.round(+this.value||1)))"></td>
+          <td data-l="Nota"><input class="cell-in" style="min-width:140px" placeholder="color, modelo…" value="${esc(x.nota||'')}" onchange="comprasCampo('${x.id}','nota',this.value.trim())"></td>
           <td data-l="Estado" class="cen"><button class="chip ${x.estado==='Pedido'?'info':'al'}" title="Tocá para cambiar"
-            onclick="listaCampo('${x.id}','estado','${x.estado==='Pedido'?'A pedir':'Pedido'}', true)">${x.estado==='Pedido'?'Pedido':'A pedir'}</button></td>
-          <td class="der"><button class="ico-btn" title="Sacar de la lista" onclick="listaSacar('${x.id}')">✕</button></td></tr>`; }).join('')}
+            onclick="comprasCampo('${x.id}','estado','${x.estado==='Pedido'?'A pedir':'Pedido'}', true)">${x.estado==='Pedido'?'Pedido':'A pedir'}</button></td>
+          <td class="der"><button class="ico-btn" title="Sacar de la lista" onclick="comprasSacar('${x.id}')">✕</button></td></tr>`; }).join('')}
       </tbody></table></div></div>`; }).join('');
 }
-function listaCampo(id, k, v, redibujar){
+function comprasCampo(id, k, v, redibujar){
   const x = Store.get('listaCompras', id); if(!x) return;
   x[k] = v; if(k==='estado' && v==='Pedido') x.pedido = hoyISO();
   Store.upsert('listaCompras', x); if(redibujar) repintar('lc-lista', tablaListaCompras()); else toast('Guardado');
 }
-function listaSacar(id){ Store.del('listaCompras', id); repintar('lc-lista', tablaListaCompras()); repintar('lc-cand', tablaCandidatos()); }
-function listaWhatsApp(provId){
+function comprasSacar(id){ Store.del('listaCompras', id); repintar('lc-lista', tablaListaCompras()); repintar('lc-cand', tablaCandidatos()); }
+function comprasWhatsApp(provId){
   const pv = Store.get('proveedores', provId) || {}, items = enLista().filter(x=>prod(x.prod).prov===provId);
   const txt = 'Hola'+(pv.contacto?' '+pv.contacto.split(' ')[0]:'')+'! Te escribo de '+tienda().nombre+'. Te paso el pedido:\n\n'
     + items.map(x=>{ const p = prod(x.prod); return '• '+p.nombre+(p.cod?' ('+p.cod+')':'')+' — talle '+p.talle
@@ -7181,7 +7230,7 @@ function listaWhatsApp(provId){
   repintar('lc-lista', tablaListaCompras());
 }
 /* llegó la mercadería: se abre la carga de la compra con todo lo de ese proveedor; al guardar sale de la lista */
-function listaLlego(provId){
+function comprasLlego(provId){
   const items = enLista().filter(x=>prod(x.prod).prov===provId);
   formIngreso(null, provId);
   INGRESO.items = items.map(x=>({prod:x.prod, cant:+x.cant||1, costo:prod(x.prod).costo||0}));
@@ -7504,7 +7553,7 @@ function pintarEncabezado(){
   $('#top-marca').innerHTML = logoHTML(t.id,'logo') +
     `<div class="txt"><b>${esc(t.nombre)}</b><span>${esc(t.sub)}</span></div>`;
   $('#btn-tienda-txt').textContent = otraTienda().nombre;
-  $('#sel-local').innerHTML = `<option value="TODOS">Toda la tienda</option>` +
+  $('#sel-local').innerHTML = `<option value="TODOS">${innerWidth<700?'Todo':'Toda la tienda'}</option>` +
     locales().map(l=>`<option value="${l.id}" ${ESTADO.local===l.id?'selected':''}>${esc(l.nombre)}</option>`).join('');
   const sinLeer = T('avisos').filter(a=>!a.leido).length;
   $('#campana').innerHTML = '✉' + (sinLeer? `<span class="cuenta">${sinLeer}</span>`:'');
