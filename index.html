@@ -6407,8 +6407,8 @@ const XP = {
   clientas(){
     const cs = Store.all('clientas').slice().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
     return {archivo:'clientes', titulo:'Clientes', orient:'landscape', sub: nf0.format(cs.length)+' clientes',
-      cols:[{t:'Nombre', w:28}, {t:'Teléfono', w:15}, {t:'Correo', w:26, pdf:false}, {t:'Ciudad', w:13}, {t:'Cumpleaños', w:11, al:'cen'},
-        {t:'Talle', w:8, al:'cen'}, {t:'Etiquetas', w:24}, {t:'Acepta mensajes', w:10, al:'cen'},
+      cols:[{t:'Nombre', w:28}, {t:'Teléfono', w:15}, {t:'Correo', w:26, pdf:false}, {t:'Ciudad', w:13, pdf:false}, {t:'Cumpleaños', w:11, al:'cen'},
+        {t:'Talle', w:8, al:'cen'}, {t:'Etiquetas', w:24, pdf:false}, {t:'Acepta mensajes', w:10, al:'cen', pdf:false},
         {t:'Compras', w:9, tipo:'num'}, {t:'Gastado', w:13, tipo:'money', sum:true}, {t:'Última compra', w:13, tipo:'fecha'},
         {t:'Días sin comprar', w:11, tipo:'num', pdf:false}, {t:'Debe', w:12, tipo:'money', sum:true}],
       grupos:[{filas: cs.map(c=>{ const d = diasSinComprar(c.id);
@@ -6420,10 +6420,10 @@ const XP = {
     return {archivo:'ventas', titulo:'Ventas', orient:'landscape',
       sub: (per>=9999?'Todas las ventas':'Últimos '+per+' días')+' · '+vs.length+' ventas · '+money(totalDe(vs)),
       cols:[{t:'N°', w:8}, {t:'Fecha', w:11, tipo:'fecha'}, {t:'Hora', w:7, al:'cen', pdf:false}, {t:'Cliente', w:22}, {t:'Local', w:14, pdf:false},
-        {t:'Canal', w:12}, {t:'Vendedora', w:15}, {t:'Forma de pago', w:16}, {t:'Prendas', w:46},
+        {t:'Canal', w:12, pdf:false}, {t:'Vendedora', w:15}, {t:'Forma de pago', w:16}, {t:'Prendas', w:46},
         {t:'Total', w:12, tipo:'money', sum:true}, {t:'Facturada', w:9, al:'cen', pdf:false}, {t:'Estado', w:10}, {t:'Saldo', w:11, tipo:'money', sum:true}],
       grupos:[{filas: vs.map(v=>[v.nro, v.fecha, v.hora, clienteNom(v.clienta), localNom(v.local), v.canal, usuario(v.vend).nombre||'—',
-        v.medio, v.items.map(i=>{ const p=prod(i.prod); return p.nombre+' T'+p.talle+(i.cant>1?' ×'+i.cant:''); }).join(' · '),
+        v.medio, v.items.map(i=>{ const p=prod(i.prod); return p.nombre+(p.talle&&p.talle!=='Único'?' T'+p.talle:'')+(i.cant>1?' ×'+i.cant:''); }).join(' · '),
         v.total, v.facturada?'Sí':'No', v.estado, v.saldo||0])}]};
   },
   compras(){
@@ -6584,7 +6584,7 @@ function aPDF(spec){
     if(c.tipo==='fecha') return /^\d{4}-\d{2}-\d{2}/.test(v) ? dmy(v.slice(0,10)) : esc(v);
     return esc(v);
   };
-  const cls = c => c.tipo==='money'||c.tipo==='num' ? 'der' : c.al==='cen'||c.tipo==='fecha' ? 'cen' : c.tipo==='caja' ? 'caja' : '';
+  const cls = c => c.tipo==='money'||c.tipo==='num' ? 'der' : c.al==='cen'||c.tipo==='fecha' ? 'cen' : c.tipo==='caja' ? 'caja' : (c.w||0)>=30 ? 'larga' : '';
   let cuerpo = '';
   spec.grupos.forEach(g=>{
     if(g.titulo && spec.grupos.length>1) cuerpo += `<tr class="grupo"><td colspan="${cols.length}">${esc(g.titulo)}</td></tr>`;
@@ -6597,8 +6597,24 @@ function aPDF(spec){
     ${cabezalHoja(spec.titulo, spec.sub)}
     <table class="tabla"><thead><tr>${cols.map(c=>`<th class="${cls(c)}">${esc(c.t)}</th>`).join('')}</tr></thead>
       <tbody>${cuerpo}</tbody>${total}</table>
-    ${spec.pie?`<p class="nota">${esc(spec.pie)}</p>`:''}`, spec.orient);
+    ${spec.pie?`<p class="nota">${esc(spec.pie)}</p>`:''}`, 'portrait', CSS_LISTADO);
 }
+/* listados en PDF: A4 vertical y compacto, para que entre lo más posible en cada hoja */
+const CSS_LISTADO = `
+  @page{margin:8mm 7mm 10mm}
+  body{font-size:7.6pt;line-height:1.22}
+  .cab{gap:10px;padding-bottom:6px;margin-bottom:7px}
+  .cab .logo{height:34px}
+  .cab h1{font-size:14pt;margin:0}
+  .cab .tienda{font-size:6.5pt}
+  .cab .sub,.cab .fecha span{font-size:7.5pt}.cab .fecha{font-size:8.5pt}
+  .tabla th{font-size:6.4pt;padding:3.5px 4px;letter-spacing:.04em}
+  .tabla td{padding:2px 4px;border-bottom-width:.4pt;white-space:nowrap}
+  .tabla td.larga{white-space:normal;width:100%}
+  .tabla tr.grupo td{font-size:8.5pt;padding:4px 4px 3px}
+  .tabla tfoot td{padding-top:4px}
+  td.caja{height:4.6mm;min-width:12mm}
+  .nota{margin-top:6px;font-size:7pt}`;
 function logoParaHoja(){
   if(tienda().logo==='svg'){ const s = document.getElementById('logo-fdc');
     return `<svg class="logo" viewBox="${s ? s.getAttribute('viewBox') : '0 0 859 1018'}">${s ? s.innerHTML : ''}</svg>`; }
@@ -6635,6 +6651,7 @@ function imprimirHoja(titulo, html, orient, cssExtra){
     .tabla th{background:var(--marca);color:#fff;font-size:7.8pt;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
       text-align:left;padding:6px 7px}
     .tabla th:first-child{border-radius:5px 0 0 0}.tabla th:last-child{border-radius:0 5px 0 0}
+    .tabla th.der{text-align:right}.tabla th.cen,.tabla th.caja{text-align:center}
     .tabla td{padding:5px 7px;border-bottom:.6pt solid var(--linea);vertical-align:middle}
     .tabla tbody tr:nth-child(even) td:not(.caja){background:var(--cebra)}
     .tabla tr{break-inside:avoid}
