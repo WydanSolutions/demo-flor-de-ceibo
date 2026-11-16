@@ -782,20 +782,20 @@ button.chip{border:0;cursor:pointer}
 <body>
 
 <!-- ══════════ PANTALLA 1: ¿A QUÉ TIENDA ENTRÁS? ══════════ -->
-<!-- ══════════ INGRESO REAL: correo y contraseña (no se usa en la demostración) ══════════ -->
+<!-- ══════════ INGRESO REAL: usuario y contraseña (no se usa en la demostración) ══════════ -->
 <div id="login" class="oculto">
   <div class="ing-marca"><div id="login-logo" class="login-logos"></div>
     <div class="ing-lema">Raíces uruguayas · Tu estilo, todos los días</div></div>
   <div class="ing-panel">
     <div class="filo"></div>
     <h1>Entrá a tu <em>tienda</em>.</h1>
-    <div class="p">Con tu correo y tu contraseña. Si es la primera vez, tocá «¿Olvidaste tu contraseña?» y te llega un mail para elegirla.</div>
+    <div class="p">Con tu usuario y tu contraseña. La primera vez entrás con la contraseña que te dio la dueña y elegís la tuya.</div>
     <form class="login-form" onsubmit="event.preventDefault(); loginEntrar()">
-      <label class="cpo"><span>Correo</span><input id="login-correo" type="email" autocomplete="username" placeholder="tu@correo.com"></label>
+      <label class="cpo"><span>Usuario</span><input id="login-correo" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="tu usuario"></label>
       <label class="cpo"><span>Contraseña</span><input id="login-clave" type="password" autocomplete="current-password"></label>
       <div id="login-msg" class="aviso al" style="display:none;margin-bottom:12px"></div>
       <button id="login-btn" class="btn grande" type="submit" style="width:100%">Entrar</button>
-      <button type="button" class="btn sec chico" style="margin-top:12px" onclick="loginOlvide()">¿Olvidaste tu contraseña?</button>
+      <div class="mini" style="margin-top:12px">¿Te olvidaste la contraseña? Pedile a la dueña que te ponga una nueva desde Configuración.</div>
     </form>
     <div class="ing-pie"><span>Desarrollado por <b style="color:var(--tinta-2);letter-spacing:.1em">WYDAN SOLUTIONS</b></span></div>
   </div>
@@ -881,6 +881,17 @@ const CORREO_SOPORTE = 'soporte@ejemplo.com';
 
 const MODO_DEMO  = !!window.FORZAR_DEMO || /[?&]demo=1(?![0-9])/.test(location.search);
 const MODO_LOCAL = !MODO_DEMO && ['localhost', '127.0.0.1'].indexOf(location.hostname) >= 0;
+
+/* Las usuarias entran con un USUARIO (sofia), no con su correo. Por detrás cada cuenta es usuario@DOMINIO_USUARIAS:
+   un correo ficticio que no recibe mails. El soporte de Wydan entra con su correo real (lleva @). */
+const DOMINIO_USUARIAS = 'demo.local';
+const correoDe  = u => { u = String(u||'').trim().toLowerCase(); return !u || u.includes('@') ? u : u+'@'+DOMINIO_USUARIAS; };
+const usuarioDe = c => String(c||'').endsWith('@'+DOMINIO_USUARIAS) ? String(c).split('@')[0] : String(c||'');
+/* Servicio de Wydan (Apps Script) que crea cuentas y pone contraseñas nuevas: herramientas/servicio-usuarias.
+   En esta PC se usa la versión de prueba contra los emuladores (servidor-prueba.js). */
+const SERVICIO_USUARIAS = MODO_LOCAL ? 'http://127.0.0.1:5530'
+  : 'https://script.google.com/macros/s/AKfycbz_fLp4d-30XDTVrPmnkoU9y3FurC0hN4-wcbO5TT-tpxhb3kcLVR2PydAv7AhL7RNWHg/exec';
+const PLAN_USUARIAS = 5;          // plan Integral: hasta 5 usuarias activas (la de soporte de Wydan no cuenta)
 
 var fbAuth = null, fbDb = null;
 function fbInit(){
@@ -4647,13 +4658,14 @@ VISTAS.config = function(){
         <th class="cen">Comisión</th><th class="der"></th></tr></thead><tbody>
         ${us.map(u=>`<tr>
           <td><div class="pro-fila"><span class="avatar ${colorTexto(u.nombre.length)}" style="width:30px;height:30px;font-size:12px">${inicial(u.nombre)}</span>
-            <b class="nom">${esc(u.nombre)}</b></div></td>
+            <div style="min-width:0"><b class="nom">${esc(u.nombre)}</b>${MODO_DEMO?'':`<div class="sub2">usuario: ${esc(usuarioDe(u.id))}${u.claveProvisoria?' · <span style="color:var(--alerta)">todavía no eligió su contraseña</span>':''}</div>`}</div></div></td>
           <td><span class="chip ${u.rol==='Dueña'?'vip':'linea'}">${esc(u.rol)}</span>${u.activo===false?' <span class="chip mal">no entra</span>':''}${Array.isArray(u.permisos)?' <span class="chip linea" title="Permisos ajustados a mano">a medida</span>':''}</td>
           <td>${u.local?localCorto(u.local):'Todos'}</td>
           <td class="cen">${u.comision||0}%</td>
           <td class="der"><button class="ico-btn" onclick="formUsuario('${u.id}')">✎</button></td></tr>`).join('')}
       </tbody></table></div>
       <button class="btn sec chico" style="margin-top:12px" onclick="formUsuario()">＋ Agregar usuaria</button>
+      ${MODO_DEMO?'':`<span class="mini" style="margin-left:8px">${activasDelPlan()} de ${PLAN_USUARIAS} usuarias del plan</span>`}
       <div class="etiqueta" style="margin:18px 0 8px">Qué trae cada rol de entrada</div>
       <div class="lista">
         <div class="it"><div class="txt"><b>Dueña</b><span>Todo, siempre. Nadie le puede sacar permisos.</span></div></div>
@@ -5791,11 +5803,20 @@ function formUsuario(id){
   const u = id? usuario(id):{rol:'Vendedora', tienda:ESTADO.tienda, comision:Store.cfg('comision'), activo:true};
   const efectivos = u.rol==='Dueña' ? PERMISOS_LISTA.map(p=>p[0]) : (Array.isArray(u.permisos) ? u.permisos : (PERMISOS[u.rol]||[]));
   const lbl = k => (PERMISOS_LISTA.find(p=>p[0]===k)||[k,k])[1];
+  const real = !MODO_DEMO;
+  if(real && !id && activasDelPlan() >= PLAN_USUARIAS){
+    toast('Ya tenés '+PLAN_USUARIAS+' usuarias activas, el máximo del plan. Para sumar más, se pasa al plan Premium (o da de baja a alguna).'); return; }
   formGen({tit:id?'Editar usuaria':'Nueva usuaria', val:Object.assign({}, u, {permN:efectivos.map(lbl), activo:u.activo!==false}),
-    aviso:'Cada una entra con su propio usuario. El rol trae permisos de entrada; abajo los ajustás para esta persona. La dueña tiene todo, siempre.',
+    aviso: real && !id ? 'Elegí un <b>usuario</b> (por ejemplo «sofia») y una <b>contraseña provisoria</b> para pasarle. Entra con eso y la primera vez elige la suya. '
+      +'Tu plan permite hasta '+PLAN_USUARIAS+' usuarias activas: quedan '+(PLAN_USUARIAS-activasDelPlan())+'.'
+      : 'Cada una entra con su propio usuario. El rol trae permisos de entrada; abajo los ajustás para esta persona. La dueña tiene todo, siempre.',
+    extra: real && id && !u.soporte ? `<div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--linea)">
+      <div class="mini" style="margin-bottom:8px">Entra con el usuario <b>${esc(usuarioDe(id))}</b>${u.claveProvisoria?' · todavía no eligió su contraseña':''}.</div>
+      <button type="button" class="btn sec chico" onclick="cerrarModal(); ponerClaveNueva('${id}')">Ponerle una contraseña nueva</button>
+      <span class="mini"> si se la olvidó</span></div>` : '',
     campos:[
       {k:'nombre', l:'Nombre', ancho:2},
-      ...(!MODO_DEMO && !id ? [{k:'correo', l:'Correo con el que va a entrar', t:'email', ancho:2, ph:'nombre@correo.com'}] : []),
+      ...(real && !id ? [{k:'usuario', l:'Usuario (con esto entra)', ph:'sofia'}, {k:'clave', l:'Contraseña provisoria', ph:'al menos 8 letras o números'}] : []),
       {k:'rol', l:'Rol', t:'select', op:Object.keys(PERMISOS), onchange:'usrRolCambio(this.value)'},
       {k:'tienda', l:'¿En qué tienda trabaja?', t:'select', op:[['','Las dos (dueña)'],...TIENDAS.map(t=>[t.id,t.nombre])]},
       {k:'local', l:'¿En qué local?', t:'select', op:[['','Todos'],...LOCALES.map(l=>[l.id, tiendaNom(l.tienda)+' — '+l.nombre])]},
@@ -5817,16 +5838,27 @@ function formUsuario(id){
       delete d.permN;
       d.activo = (id && u.rol!=='Dueña') ? d.activo!==false : true;
       if(id===ESTADO.usuario.id && !d.activo){ toast('No podés darte de baja a vos misma'); return false; }
-      if(!MODO_DEMO && !id){
-        const correo = String(d.correo||'').trim().toLowerCase();
-        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)){ toast('Falta el correo con el que va a entrar'); return false; }
-        if(Store.get('usuarios', correo) || correo===CORREO_SOPORTE){ toast('Ese correo ya está en la lista'); return false; }
-        id = correo;
+      if(real && id && d.activo && u.activo===false && activasDelPlan() >= PLAN_USUARIAS){
+        toast('Ya hay '+PLAN_USUARIAS+' usuarias activas, el máximo del plan: para volver a habilitarla, da de baja a otra.'); return false; }
+      if(real && !id){
+        /* usuaria nueva: el servicio de Wydan le crea la cuenta y recién ahí se guarda su ficha */
+        const usr = normUsuario(d.usuario), clave = String(d.clave||'');
+        if(!/^[a-z0-9._-]{2,30}$/.test(usr)){ toast('Elegí un usuario de al menos 2 letras (sin espacios ni símbolos)'); return false; }
+        const correo = correoDe(usr);
+        if(Store.get('usuarios', correo)){ toast('Ese usuario ya existe: elegí otro'); return false; }
+        if(clave.length < MIN_CLAVE){ toast('La contraseña provisoria tiene que tener al menos '+MIN_CLAVE+' letras o números'); return false; }
+        delete d.usuario; delete d.clave;
+        const b = $$('#modales .m-pie .btn').pop(); if(b){ b.disabled = true; b.textContent = 'Creando…'; }
+        servicioUsuarias('crear', correo, clave, d.nombre).then(()=>{
+          Store.upsert('usuarios', Object.assign(d, {id:correo, claveProvisoria:true}));
+          cerrarModal(); render();
+          toast('Listo: '+d.nombre.split(' ')[0]+' entra con el usuario «'+usr+'» y la contraseña que le pusiste. La primera vez elige la suya.');
+        }).catch(e=>{ toast(e.message); if(b){ b.disabled = false; b.textContent = 'Guardar'; } });
+        return false;
       }
-      delete d.correo;
-      d.id = id; Store.upsert('usuarios', d);
+      delete d.usuario; delete d.clave;
+      d.id = id; Store.upsert('usuarios', Object.assign({}, u, d));
       if(id===ESTADO.usuario.id) ESTADO.usuario = usuario(id);
-      if(!MODO_DEMO && !u.id){ toast('Usuaria agregada. Para que pueda entrar, Wydan le crea el acceso y le llega un correo para elegir su contraseña.'); return; }
       toast(d.activo ? 'Usuaria guardada' : 'Usuaria dada de baja: ya no puede entrar');
     }});
 }
@@ -5836,6 +5868,11 @@ function usrRolCambio(rol){
     const on = def.includes(k); b.classList.toggle('vip', on); b.classList.toggle('linea', !on); });
   if(rol==='Dueña'){ const t=$('#f_tienda'), l=$('#f_local'); if(t) t.value=''; if(l) l.value=''; }
 }
+
+/* usuarias que cuentan para el plan (la de soporte de Wydan no está en la lista) */
+const activasDelPlan = () => Store.all('usuarios').filter(u=>u.activo!==false && !u.soporte).length;
+/* «Sofía Pereyra» → «sofia.pereyra» */
+const normUsuario = v => String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'');
 
 </script>
 <script>/* ── js/etiquetas.js ── */
@@ -7392,12 +7429,16 @@ function ocultarCargando(){ const c = document.getElementById('cargando'); if(c)
 <script>/* ── js/login.js ── */
 /* ══════════════ INGRESO REAL (Firebase Auth) ══════════════
    Solo en la página real (y contra los emuladores en esta PC). En MODO_DEMO no se usa.
-   · Cada usuaria entra con SU correo y su contraseña. La contraseña la elige ella con el correo de
-     «restablecer» que manda Firebase: nadie de Wydan la conoce.
+   · Cada usuaria entra con su USUARIO (sofia) y su contraseña. Por detrás la cuenta es un correo ficticio
+     (correoDe en firebase-config.js), así que no hay mails: la contraseña se maneja toda desde la página.
+   · La dueña crea a cada usuaria con una contraseña PROVISORIA (Configuración → Usuarias). La primera vez que
+     entra, la página la obliga a elegir una suya (usuarios/{correo}.claveProvisoria). Si se la olvida, la dueña
+     le pone otra provisoria. Las dos cosas las hace el servicio de Wydan (herramientas/servicio-usuarias).
    · Quién puede entrar lo decide la colección «usuarios» (el id de cada documento es el correo), que
-     maneja la dueña desde Configuración. El soporte de Wydan entra siempre (ver firestore.rules).
+     maneja la dueña desde Configuración. El soporte de Wydan entra siempre, con su correo (ver firestore.rules).
    · Se cierra la sesión sola después de MINUTOS_INACTIVIDAD sin tocar nada. */
 const MINUTOS_INACTIVIDAD = 30;
+const MIN_CLAVE = 8;
 
 function mostrarLogin(msg){
   $('#elegir').classList.add('oculto'); $('#ingreso').classList.add('oculto'); $('#app').classList.add('oculto');
@@ -7407,30 +7448,17 @@ function mostrarLogin(msg){
   const b = $('#login-btn'); b.disabled = false; b.textContent = 'Entrar';
 }
 async function loginEntrar(){
-  const correo = ($('#login-correo').value||'').trim().toLowerCase(), clave = $('#login-clave').value||'';
-  if (!correo || !clave){ mostrarLogin('Escribí tu correo y tu contraseña'); return; }
+  const correo = correoDe($('#login-correo').value), clave = $('#login-clave').value||'';
+  if (!correo || !clave){ mostrarLogin('Escribí tu usuario y tu contraseña'); return; }
   const b = $('#login-btn'); b.disabled = true; b.textContent = 'Entrando…';
   try{ await fbAuth.signInWithEmailAndPassword(correo, clave); }
   catch(e){
     const c = String(e && e.code || '');
     mostrarLogin(/too-many/.test(c) ? 'Demasiados intentos: esperá unos minutos y probá de nuevo'
       : /network/.test(c) ? 'No hay conexión a internet'
-      : /configuration-not-found|operation-not-allowed/.test(c) ? 'El ingreso con correo todavía no está habilitado. Avisale a Wydan.'
-      : 'El correo o la contraseña no coinciden');
+      : /configuration-not-found|operation-not-allowed/.test(c) ? 'El ingreso todavía no está habilitado. Avisale a Wydan.'
+      : 'El usuario o la contraseña no coinciden');
   }
-}
-async function loginOlvide(){
-  const correo = ($('#login-correo').value||'').trim().toLowerCase();
-  if (!correo){ mostrarLogin('Escribí tu correo arriba y tocá de nuevo «¿Olvidaste tu contraseña?»'); return; }
-  try{ await fbAuth.sendPasswordResetEmail(correo); }
-  catch(e){
-    const c = String(e && e.code || '');
-    /* el ingreso todavía no está prendido en la consola de Firebase: decirlo, en vez de prometer un mail que no sale */
-    if (/configuration-not-found|operation-not-allowed/.test(c)){ mostrarLogin('El ingreso con correo todavía no está habilitado. Avisale a Wydan.'); return; }
-    if (/network/.test(c)){ mostrarLogin('No hay conexión a internet'); return; }
-    /* cualquier otro caso: no se dice si el correo existe o no */
-  }
-  mostrarLogin('Si ese correo tiene acceso, te llegó un mail para elegir una contraseña nueva. Revisá también el correo no deseado.');
 }
 
 /* ya entró a Firebase: ¿quién es en la página? */
@@ -7441,6 +7469,13 @@ async function alIngresar(user){
   catch(e){ /* sin permiso de leer: no está habilitada */ }
   if (!u && correo===CORREO_SOPORTE) u = {id:correo, nombre:'Soporte Wydan', rol:'Dueña', tienda:'', local:'', activo:true, soporte:true};
   if (!u || u.activo===false){ await fbAuth.signOut(); mostrarLogin('Tu usuario no está habilitado en la página. Pedíselo a la dueña.'); return; }
+  /* entró con la contraseña provisoria que le dio la dueña: antes que nada elige la suya */
+  if (u.claveProvisoria){
+    $('#login').classList.add('oculto');
+    const ok = await elegirClavePropia(correo);
+    if (!ok){ await fbAuth.signOut(); mostrarLogin('Para entrar tenés que elegir tu contraseña.'); return; }
+    u.claveProvisoria = false;
+  }
   ESTADO.usuario = u;
   $('#login-btn').textContent = 'Cargando tus datos…';
   DB = {cfg:{}};
@@ -7474,18 +7509,85 @@ function prepararDatos(){
   aplicarListas(); aplicarLocales();
 }
 
-let _ultimoMovimiento = Date.now();
+let _ultimoMovimiento = Date.now(), _vigilando = false;
 function vigilarInactividad(){
+  if (_vigilando) return; _vigilando = true;
   ['click','keydown','touchstart','scroll'].forEach(ev=>document.addEventListener(ev, ()=>{ _ultimoMovimiento = Date.now(); }, {passive:true}));
   setInterval(()=>{
     if (ESTADO.usuario && Date.now()-_ultimoMovimiento > MINUTOS_INACTIVIDAD*60000) salir(true);
   }, 60000);
 }
 
-/* cambiar la contraseña: le llega el mismo correo de «restablecer» a su propia casilla */
-async function cambiarClave(){
-  try{ await fbAuth.sendPasswordResetEmail(ESTADO.usuario.id); toast('Te llegó un correo para elegir una contraseña nueva'); }
-  catch(e){ toast('No se pudo mandar el correo. Probá de nuevo.'); }
+/* ── contraseñas ── */
+const errClave = (a, b) => a.length < MIN_CLAVE ? 'La contraseña tiene que tener al menos '+MIN_CLAVE+' letras o números'
+  : a !== b ? 'Las dos contraseñas no son iguales' : '';
+function ventanaClave(o){
+  abrirModal(`<div class="m-cab"><div><h3>${esc(o.tit)}</h3><div class="sub">${esc(o.sub||'')}</div></div>
+      ${o.obligatoria?'':'<div class="x"><button class="ico-btn" onclick="cerrarModal()">✕</button></div>'}</div>
+    <div class="m-cuerpo">
+      ${o.aviso?`<div class="aviso" style="margin-bottom:14px"><span class="em">✦</span><div>${o.aviso}</div></div>`:''}
+      ${o.actual?'<label class="cpo"><span>Tu contraseña de ahora</span><input id="c_actual" type="password" autocomplete="current-password"></label>':''}
+      <label class="cpo"><span>${esc(o.lNueva||'Contraseña nueva')}</span><input id="c_nueva" type="${o.visible?'text':'password'}" autocomplete="new-password" placeholder="al menos ${MIN_CLAVE} letras o números"></label>
+      ${o.visible?'':'<label class="cpo"><span>Repetila</span><input id="c_repe" type="password" autocomplete="new-password"></label>'}
+      <div id="c_msg" class="aviso al" style="display:none"></div>
+    </div>
+    <div class="m-pie">${o.obligatoria?'':'<button class="btn sec" onclick="cerrarModal()">Cancelar</button>'}
+      <button class="btn" id="c_ok">${esc(o.btn||'Guardar')}</button></div>`, 'angosto');
+  if (o.obligatoria){ const f = $('#modales .fondo-modal'); if (f) f.onclick = null; }
+  const msg = t => { const m = $('#c_msg'); m.textContent = t; m.style.display = t ? 'block' : 'none'; };
+  $('#c_ok').onclick = async ()=>{
+    const nueva = $('#c_nueva').value||'', repe = o.visible ? nueva : ($('#c_repe').value||''), actual = ($('#c_actual')||{}).value||'';
+    const e = errClave(nueva, repe); if (e){ msg(e); return; }
+    const b = $('#c_ok'); b.disabled = true; b.textContent = 'Guardando…';
+    try{ await o.guardar(nueva, actual); }
+    catch(x){ msg(x.message || 'No se pudo. Probá de nuevo.'); b.disabled = false; b.textContent = o.btn||'Guardar'; }
+  };
+  setTimeout(()=>{ const i = $(o.actual ? '#c_actual' : '#c_nueva'); if (i) i.focus(); }, 50);
+}
+/* primera vez: la provisoria se cambia por una propia (y la ficha deja de marcarla como provisoria) */
+function elegirClavePropia(correo){
+  return new Promise(listo=>{
+    ventanaClave({tit:'Elegí tu contraseña', sub:'Es la primera vez que entrás', obligatoria:true, btn:'Guardar y entrar',
+      aviso:'Entraste con la contraseña que te dio la dueña. Ahora elegí una tuya: solo la vas a saber vos.',
+      async guardar(nueva){
+        await fbAuth.currentUser.updatePassword(nueva).catch(e=>{ throw new Error(/weak/.test(e.code) ? 'Esa contraseña es muy fácil: probá con otra' : 'No se pudo guardar. Probá de nuevo.'); });
+        await fbDb.collection('usuarios').doc(correo).update({claveProvisoria:false});
+        cerrarModal(); toast('Listo: ya tenés tu contraseña'); listo(true);
+      }});
+  });
+}
+/* desde el menú de cada una: pide la de ahora (Firebase lo exige) y la nueva */
+function cambiarClave(){
+  cerrarModal();
+  ventanaClave({tit:'Cambiar mi contraseña', sub:'Usuario: '+usuarioDe(ESTADO.usuario.id), actual:true, btn:'Cambiar',
+    async guardar(nueva, actual){
+      const u = fbAuth.currentUser;
+      try{ await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, actual)); }
+      catch(e){ throw new Error(/too-many/.test(e.code) ? 'Demasiados intentos: esperá unos minutos' : 'La contraseña de ahora no es esa'); }
+      await u.updatePassword(nueva).catch(e=>{ throw new Error(/weak/.test(e.code) ? 'Esa contraseña es muy fácil: probá con otra' : 'No se pudo cambiar. Probá de nuevo.'); });
+      cerrarModal(); toast('Contraseña cambiada');
+    }});
+}
+/* el servicio de Wydan: crear una usuaria o ponerle una contraseña provisoria nueva (solo la dueña o el soporte) */
+async function servicioUsuarias(accion, correo, clave, nombre){
+  if (!SERVICIO_USUARIAS) throw new Error('Falta instalar el servicio de usuarias. Avisale a Wydan.');
+  const idToken = await fbAuth.currentUser.getIdToken();
+  let r;
+  try{ r = await fetch(SERVICIO_USUARIAS, {method:'POST', body:JSON.stringify({accion, usuario:correo, clave, nombre, idToken})}).then(x=>x.json()); }
+  catch(e){ throw new Error('No hay conexión con el servicio. Probá de nuevo en un rato.'); }
+  if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo. Probá de nuevo.');
+  return r;
+}
+/* la dueña le pone una contraseña provisoria nueva a una usuaria (se olvidó la suya) */
+function ponerClaveNueva(id){
+  const u = usuario(id); if (!u.id) return;
+  ventanaClave({tit:'Contraseña nueva para '+u.nombre.split(' ')[0], sub:'Usuario: '+usuarioDe(id), visible:true, lNueva:'Contraseña provisoria',
+    btn:'Ponerle esta contraseña',
+    aviso:'Escribí una contraseña y pasásela. Cuando entre con ella, la página le pide que elija una suya.',
+    async guardar(nueva){
+      await servicioUsuarias('clave', id, nueva);
+      cerrarModal(); toast('Listo: '+u.nombre.split(' ')[0]+' entra con «'+usuarioDe(id)+'» y esa contraseña');
+    }});
 }
 
 </script>
@@ -7595,7 +7697,7 @@ function menuUsuario(){
     <div class="m-cuerpo">
       ${MODO_DEMO ? `<div class="aviso"><span class="em">◐</span><div>Estás viendo la página como <b>${esc(ESTADO.usuario.rol)}</b>.
         Probá entrar como otra persona para ver cómo cambia lo que se muestra.</div></div>`
-        : `<div class="mini">Entraste con <b>${esc(ESTADO.usuario.id)}</b>.</div>
+        : `<div class="mini">Entraste con el usuario <b>${esc(usuarioDe(ESTADO.usuario.id))}</b>.</div>
         <button class="btn sec chico" style="margin-top:10px" onclick="cambiarClave()">Cambiar mi contraseña</button>`}
       ${puedeCambiar?`<div class="etiqueta" style="margin:16px 0 8px">Cambiar de tienda</div>
         <div class="lista">${TIENDAS.map(t=>`<div class="it">
